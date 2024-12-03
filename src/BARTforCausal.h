@@ -141,12 +141,23 @@ bartModelMatrix=function(X, numcut=0L, usequants=FALSE, type=7,
 
 class BARTforCausal{
 public:
-  BARTforCausal(NumericMatrix X_, NumericVector Y_, NumericVector Z_, NumericVector pi_){
+  BARTforCausal(NumericMatrix X_, NumericVector Y_, NumericVector Z_, NumericVector pi_, bool binary){
     X = X_;
     Y = Y_;
     Z = Z_;
     pi = pi_;
     main_bart = NULL;
+    this->binary = binary;
+    //Rcout << "father initial";
+  }
+  
+  BARTforCausal(NumericMatrix X_, LogicalVector Y_, NumericVector Z_, NumericVector pi_, bool binary){
+    X = X_;
+    Y = as<NumericVector>(Y_) * 2 - 1;
+    Z = Z_;
+    pi = pi_;
+    main_bart = NULL;
+    this->binary = binary;
     //Rcout << "father initial";
   }
   
@@ -237,4 +248,5 @@ protected:
   NumericVector Z;
   NumericVector pi;
   bart_model * main_bart;
+  bool binary;
 };

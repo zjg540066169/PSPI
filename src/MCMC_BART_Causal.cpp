@@ -148,8 +148,11 @@ bartModelMatrix=function(X, numcut=0L, usequants=FALSE, type=7,
 */
 
 // [[Rcpp::export]]
-List MCMC_BART_Causal(NumericMatrix X, NumericVector Y, NumericVector Z, NumericVector pi, NumericMatrix X_test, NumericVector pi_test, int model, long nburn, long npost, bool verbose = false){
+List MCMC_BART_Causal(NumericMatrix X, NumericVector Y, NumericVector Z, NumericVector pi, NumericMatrix X_test, NumericVector pi_test, int model, long nburn, long npost, bool verbose = false, bool binary = false){
   BARTforCausal * cmodel;
+  if(binary){
+    Y = Y * 2 - 1;
+  }
   switch (model){
   case 1:
     cmodel = new vanillaBART(X, Y, Z, pi);
