@@ -174,7 +174,7 @@ public:
     Y_Z = Y[Z_1] - bart_pre[Z_1];
     
     
-    bs = new NaturalSpline(as<NumericVector>(pi[Z_1]), 4);
+    bs = new NaturalSpline(as<NumericVector>(pi[Z_1]), 2 + std::min(10, (int)(Y_.length() / 4)));
     pi_Z = wrap(bs->basis(true));
   
     //Rcout << arma::rank(as<mat>(pi_Z)) << std::endl;

@@ -65,7 +65,10 @@ public:
     //Rcout << 123 << std::endl;
     //G = Rcpp::Environment::global_env();
     //Rcout << 123 << std::endl;
-    Function bartModelMatrix = Environment::namespace_env("SBMTrees")["bartModelMatrix"];
+    //Function bartModelMatrix = Environment::namespace_env("PSPI")["bartModelMatrix"];
+    Function bartModelMatrix = Rcpp::Environment::global_env()["bartModelMatrix"];
+    
+    
     //Rcout << 123 << std::endl;
     this->usequants = usequants;
     this->cont = cont;
