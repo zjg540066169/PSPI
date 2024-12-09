@@ -9,6 +9,13 @@
 #include "BARTforCausal.h"
 #endif
 
+#ifndef DIST_H_
+#define DIST_H_
+#include <RcppDist.h>
+// [[Rcpp::depends(RcppArmadillo, RcppDist)]]
+#endif
+
+
 
 #ifndef RCPP_H_
 #define RCPP_H_
@@ -145,26 +152,52 @@ public:
     main_bart = new bart_model(cbind(X, pi, Z), Y, 100L, false, false, false, 200);
     //Rcout << "bart_main";
     main_bart->update(50, 50, 1, false, 10L);
-    sigma = main_bart->get_sigma();
+    if(!this->binary)
+      this->sigma = main_bart->get_sigma();
+    else
+      this->sigma = 1;
     //Rcout << sigma << std::endl;
-    bart_pre = colMeans(main_bart->predict(cbind(this->X, this->pi, this->Z)));
+    this->bart_pre = colMeans(main_bart->predict(cbind(this->X, this->pi, this->Z)));
     //Rcout << bart_pre << std::endl;
   };
   
   void update(bool verbose = false) override{
+    main_bart->set_data(cbind(X, pi, Z), Y);
     main_bart->update(1, 1, 1, verbose, 10L);
-    sigma = main_bart->get_sigma();
+    if(!this->binary)
+      sigma = main_bart->get_sigma();
     bart_pre = colMeans(main_bart->predict(cbind(X, pi, Z)));
-    //Rcout << bart_pre << std::endl;
+    if(binary){
+      for(int i = 0; i < n; ++i){
+        if(Y[i] < 0){
+          NumericVector mean_y = rtruncnorm(1, bart_pre[i], sigma, R_NegInf, 0);
+          Y[i] = mean_y[0];
+        }else{
+          NumericVector mean_y = rtruncnorm(1, bart_pre[i], sigma, 0, R_PosInf);
+          Y[i] = mean_y[0];
+        }
+      }
+    }
   };
   
   List predict(NumericMatrix X_test, NumericVector pi_test) override{
-    long n = X_test.nrow();
-    NumericVector Z_1 (n, 1);
-    NumericVector Z_0 (n, 0);
+    long N = X_test.nrow();
+    NumericVector Z_1 (N, 1);
+    NumericVector Z_0 (N, 0);
     
     NumericVector outcome_1 = main_bart->predict(cbind(X_test, pi_test, Z_1));
     NumericVector outcome_0 = main_bart->predict(cbind(X_test, pi_test, Z_0));
+    if(binary){
+      for(int i = 0; i < N; ++i){
+        outcome_1[i] = R::rbinom(1, R::pnorm(outcome_1[i], 0, 1, true, false));
+        outcome_0[i] = R::rbinom(1, R::pnorm(outcome_0[i], 0, 1, true, false));
+      }
+    }else{
+      for(int i = 0; i < N; ++i){
+        outcome_1[i] = outcome_1[i] + R::rnorm(0, sigma);
+        outcome_0[i] = outcome_0[i] + R::rnorm(0, sigma);
+      }
+    }
     //Rcout << mean(outcome_0) << std::endl;
     //Rcout << mean(outcome_1) - mean(outcome_0) << std::endl;
     return List::create(Named("outcome_1") = outcome_1, Named("outcome_0") = outcome_0);
@@ -173,7 +206,8 @@ public:
   List get_posterior() override{
     return List::create(
       Named("sigma") = sigma,
-      Named("bart_pre") = bart_pre
+      Named("bart_pre") = bart_pre,
+      Named("Y_hat") = Y
     );
   };
   

@@ -1,18 +1,23 @@
 library(dplyr)
-source("./simulate_2024_Sep_simple.R")
+source("./R/simulate_2024_Sep_simple.R")
 library(rstan)
-library(rstanarm)
+library(brms)
 library(RcppArmadillo)
 library(Rcpp)
+library(RcppDist)
 library(boot)
 library(SuperLearner)
 library(readr)
-sourceCpp("src/MCMC_BART_Causal.cpp", args = c("-fopenmp"))
-
+sourceCpp("src/MCMC_BART_Causal.cpp")
+MCMC_BART_Causal_R = function(X, Y, Z, pi, X_test, pi_test, model, nburn, npost, binary = F, verbose = F, seed = NULL){
+  if(!is.null(seed))
+    set.seed(seed)
+  return(MCMC_BART_Causal(X, Y, Z, pi,  X_test, pi_test, model, nburn, npost, binary, verbose))
+}
 
 path = "./simulation_nov/"
-nburn = 4
-npost = 4
+nburn = 5000
+npost = 5000
 
 args = commandArgs(trailingOnly = T)
 seed = as.integer(args[1])
@@ -79,7 +84,7 @@ if(scenario == 4){
 trials = data$trials
 EHR = as.data.frame(data$EHR)
 
-true_TE = mean(data$data$outcome1 - data$data$outcome0)
+true_TE = mean((data$data$outcome1) - (data$data$outcome0))
 
 sample_mean = mean(trials$outcome[trials$Z == 1]) - mean(trials$outcome[trials$Z == 0])
 
@@ -88,7 +93,23 @@ se = sqrt(var(trials$outcome[trials$Z == 1]) / length(trials$outcome[trials$Z ==
 
 
 
-true = stan_lm(outcome ~ Z * (cont_var1 + cont_var2 + cont_var3 + bin_var1 + bin_var2 + bin_var3), data = trials, chains = 1, prior=NULL, iter = nburn + npost)
+# true = brm(
+#   formula = outcome ~ Z * (cont_var1 + cont_var2 + cont_var3 + bin_var1 + bin_var2 + bin_var3),
+#   data = trials,
+#   family = gaussian(),  # equivalent to a normal response distribution
+#   sample_prior = "only",
+#   chains = 1,
+#   iter = 1
+# )
+
+
+true = brm(
+  formula = outcome ~ Z * (cont_var1 + cont_var2 + cont_var3 + bin_var1 + bin_var2 + bin_var3),
+  data = trials,
+  family = gaussian(),  # equivalent to a normal response distribution
+  chains = 1,
+  iter = nburn + npost
+)
 true_predict1 = posterior_predict(true, cbind(EHR, Z = 1))
 true_predict0 = posterior_predict(true, cbind(EHR, Z = 0))
 true_posterior = rowMeans(true_predict1 - true_predict0)
@@ -96,7 +117,13 @@ true_posterior = rowMeans(true_predict1 - true_predict0)
 sel = c(rep(1, dim(trials)[1]), rep(0, dim(EHR)[1]))
 co = rbind(trials[,1:20], EHR[,1:20])
 
-bart = stan_glm(sel ~ . , family = binomial(link = "logit"), data = cbind(sel, co), chains = 1, prior=NULL, iter = nburn + npost)
+bart = brm(
+  sel ~ .,
+  data = data.frame(sel, co),
+  family = bernoulli(link = "logit"),
+  chains = 1,
+  iter = nburn + npost
+)
 
 trials$e_ps = colMeans(posterior_epred(bart, trials[,1:20]))
 EHR$e_ps = colMeans(posterior_epred(bart, EHR[,1:20]))
@@ -114,10 +141,10 @@ AIPW = aipw_function(trials, 1:dim(trials)[1])
 bootstrap_results <- boot(data = trials, statistic = aipw_function, R = 1000)
 AIPW_CI = c(boot.ci(bootstrap_results, type = "perc")$percent[4], boot.ci(bootstrap_results, type = "perc")$percent[5])
 
-cbart = MCMC_BART_Causal(as.matrix(trials[,1:20]), trials$outcome, trials$Z, trials$e_ps, as.matrix(EHR[,1:20]), EHR$e_ps, 2, nburn, npost)
-model_1 = MCMC_BART_Causal(as.matrix(trials[,1:20]), trials$outcome, trials$Z, trials$e_ps, as.matrix(EHR[,1:20]), EHR$e_ps, 3, nburn, npost)
-model_2_4 = MCMC_BART_Causal(as.matrix(trials[,1:20]), trials$outcome, trials$Z, trials$e_ps, as.matrix(EHR[,1:20]), EHR$e_ps, 4, nburn, npost)
-model_2_4_spline = MCMC_BART_Causal(as.matrix(trials[,1:20]), trials$outcome, trials$Z, trials$e_ps, as.matrix(EHR[,1:20]), EHR$e_ps, 5, nburn, npost)
+cbart = MCMC_BART_Causal_R(as.matrix(trials[,1:20]), trials$outcome, trials$Z, trials$e_ps, as.matrix(EHR[,1:20]), EHR$e_ps, 2, nburn, npost, F, F, seed)
+model_1 = MCMC_BART_Causal_R(as.matrix(trials[,1:20]), trials$outcome, trials$Z, trials$e_ps, as.matrix(EHR[,1:20]), EHR$e_ps, 3, nburn, npost, F, F, seed)
+model_2_4 = MCMC_BART_Causal_R(as.matrix(trials[,1:20]), trials$outcome, trials$Z, trials$e_ps, as.matrix(EHR[,1:20]), EHR$e_ps, 4, nburn, npost, F, F, seed)
+model_2_4_spline = MCMC_BART_Causal_R(as.matrix(trials[,1:20]), trials$outcome, trials$Z, trials$e_ps, as.matrix(EHR[,1:20]), EHR$e_ps, 5, nburn, npost, F, F, seed)
 BART_model = BART::wbart(as.matrix(cbind(trials[,1:20], trials$Z, trials$e_ps)), as.numeric(trials$outcome), ndpost=npost, nskip = nburn, rm.const = F)
 bart_pure_TE = rowMeans(predict(BART_model, cbind(as.matrix(EHR[,1:20]), 1, EHR$e_ps)) - predict(BART_model, cbind(as.matrix(EHR[,1:20]), 0, EHR$e_ps)))
 BART_model_no_pi = BART::wbart(as.matrix(cbind(trials[,1:20], trials$Z)), as.numeric(trials$outcome), ndpost=npost, nskip = nburn, rm.const = F)

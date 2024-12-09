@@ -116,7 +116,8 @@ public:
       
       double sig2 = arma::as_scalar( arma::trans(resid)*resid/(n-p));
       sigest = pow(sig2, 0.5);
-      //Rcout << sigest << std::endl;
+      sigma = sigest;
+      Rcout << sigma << std::endl;
     }
     NumericVector qch;
     qch.push_back(1 - 0.9);
@@ -163,7 +164,7 @@ public:
     bm.setdata(p,n,ix,iy, nc);
     //Rcout << "finish initialization" << std::endl;
   };
- 
+  
   List update(long nburn, long npost, int skip, bool verbose = false, long print_every = 100L){
     Rcpp::NumericVector trmean(n); //train
     Rcpp::NumericVector tsigma(0); //train

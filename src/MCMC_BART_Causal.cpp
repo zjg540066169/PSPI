@@ -148,36 +148,48 @@ bartModelMatrix=function(X, numcut=0L, usequants=FALSE, type=7,
 */
 
 // [[Rcpp::export]]
-List MCMC_BART_Causal(NumericMatrix X, NumericVector Y, NumericVector Z, NumericVector pi, NumericMatrix X_test, NumericVector pi_test, int model, long nburn, long npost, bool verbose = false, bool binary = false){
+List MCMC_BART_Causal(NumericMatrix X, NumericVector Y, NumericVector Z, NumericVector pi, NumericMatrix X_test, NumericVector pi_test, int model, long nburn, long npost, bool binary = false, bool verbose = false){
   BARTforCausal * cmodel;
   if(binary){
     Y = Y * 2 - 1;
   }
+  
+  NumericMatrix X_ = clone(X);
+  NumericVector Y_ = clone(Y);
+  NumericVector Z_ = clone(Z);
+  NumericVector pi_ = clone(pi);
+  
+  NumericMatrix X_test_ = clone(X_test);
+  NumericVector pi_test_ = clone(pi_test);
+  
+  pi_ = 1 / (1 + exp(-1 * pi_));
+  pi_test_ = 1 / (1 + exp(-1 * pi_test_));
   switch (model){
   case 1:
-    cmodel = new vanillaBART(X, Y, Z, pi);
+    cmodel = new vanillaBART(X_, Y_, Z_, pi_, binary);
     break;
   case 2:
-    cmodel = new causalBART(X, Y, Z, pi);
+    cmodel = new causalBART(X_, Y_, Z_, pi_, binary);
     break;
   case 3:
-    cmodel = new model_1(X, Y, Z, pi);
+    cmodel = new model_1(X_, Y_, Z_, pi_, binary);
     break;
   case 4:
-    cmodel = new model_2_4(X, Y, Z, pi);
+    cmodel = new model_2_4(X_, Y_, Z_, pi_, binary);
     break;
   case 5:
-    cmodel = new model_2_4_spline(X, Y, Z, pi);
+    cmodel = new model_2_4_spline(X_, Y_, Z_, pi_, binary);
     break;
   }
   
-  long n = X_test.nrow();
+  long n = X_test_.nrow();
   NumericMatrix post_outcome1(npost, n);
   NumericMatrix post_outcome0(npost, n);
   NumericMatrix post_te(npost, n);
   NumericVector post_sigma(npost);
   NumericVector post_cbart_pre_mean(npost);
   NumericMatrix post_Z_cbart(npost, n);
+  NumericMatrix post_Y_star(npost, Y.length());
   
   Progress p(nburn + npost, !verbose);
   for(int i = 0 ; i < nburn + npost; ++i){
@@ -186,17 +198,18 @@ List MCMC_BART_Causal(NumericMatrix X, NumericVector Y, NumericVector Z, Numeric
     p.increment();
     if(verbose)
       Rcout << i << " " << nburn + npost << std::endl;
-    cmodel->update(false);
+    cmodel->update(verbose);
     List posterior = cmodel->get_posterior();
     if(i >= nburn){
-       List predict_outcome = cmodel->predict(X_test, pi_test);
+       List predict_outcome = cmodel->predict(X_test_, pi_test_);
        post_outcome0(i - nburn, _) = as<NumericVector>(predict_outcome["outcome_0"]);
        post_outcome1(i - nburn, _) = as<NumericVector>(predict_outcome["outcome_1"]);
        post_te(i - nburn, _) = post_outcome1(i - nburn, _) - post_outcome0(i - nburn, _);
        post_sigma[i - nburn] = posterior["sigma"];
+       post_Y_star(i - nburn, _) = as<NumericVector>(posterior["Y_hat"]);
        //post_cbart_pre_mean[i - nburn] = posterior["cbart_pre_mean"];
        //post_Z_cbart(i - nburn, _) = as<NumericVector>(posterior["post_Z_cbart"]);
     }
   }
-  return List::create(Named("post_Z_cbart") = post_Z_cbart,Named("post_cbart_pre_mean") = post_cbart_pre_mean, Named("post_outcome1") = post_outcome1, Named("post_outcome0") = post_outcome0, Named("post_te") = post_te, Named("post_sigma") = post_sigma);
+  return List::create(Named("post_Z_cbart") = post_Z_cbart,Named("post_cbart_pre_mean") = post_cbart_pre_mean, Named("post_outcome1") = post_outcome1, Named("post_outcome0") = post_outcome0, Named("post_te") = post_te, Named("post_sigma") = post_sigma, Named("post_Y_star") = post_Y_star);
 }

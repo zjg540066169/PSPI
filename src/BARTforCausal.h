@@ -4,6 +4,13 @@
 // [[Rcpp::depends(RcppArmadillo)]]
 #endif
 
+#ifndef DIST_H_
+#define DIST_H_
+#include <RcppDist.h>
+// [[Rcpp::depends(RcppArmadillo, RcppDist)]]
+#endif
+
+
 #ifndef BART_H_
 #define BART_H_
 #include "bart_model.h"
@@ -142,22 +149,24 @@ bartModelMatrix=function(X, numcut=0L, usequants=FALSE, type=7,
 class BARTforCausal{
 public:
   BARTforCausal(NumericMatrix X_, NumericVector Y_, NumericVector Z_, NumericVector pi_, bool binary){
-    X = X_;
+    X = clone(X_);
     Y = Y_;
-    Z = Z_;
-    pi = pi_;
+    Z = clone(Z_);
+    pi = clone(pi_);
     main_bart = NULL;
     this->binary = binary;
+    n = Y.length();
     //Rcout << "father initial";
   }
   
   BARTforCausal(NumericMatrix X_, LogicalVector Y_, NumericVector Z_, NumericVector pi_, bool binary){
-    X = X_;
-    Y = as<NumericVector>(Y_) * 2 - 1;
-    Z = Z_;
-    pi = pi_;
+    X = clone(X_);
+    Y = as<NumericVector>(clone(Y_)) * 2 - 1;
+    Z = clone(Z_);
+    pi = clone(pi_);
     main_bart = NULL;
     this->binary = binary;
+    n = Y.length();
     //Rcout << "father initial";
   }
   
@@ -249,4 +258,5 @@ protected:
   NumericVector pi;
   bart_model * main_bart;
   bool binary;
+  long n;
 };

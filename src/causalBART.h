@@ -17,6 +17,8 @@
 
 
 using namespace Rcpp;
+
+
 /*** R
 bartModelMatrix=function(X, numcut=0L, usequants=FALSE, type=7,
                          rm.const=FALSE, cont=FALSE, xinfo=NULL) {
@@ -144,40 +146,87 @@ public:
   causalBART(NumericMatrix X_, NumericVector Y_, NumericVector Z_, NumericVector pi_, bool binary) : BARTforCausal(X_, Y_, Z_, pi_, binary){
     main_bart = new bart_model(cbind(X, pi), Y, 100L, false, false, false, 200);
     main_bart->update(50, 50, 1, false, 10L);
-    sigma = main_bart->get_sigma();
+    if(!this->binary)
+      sigma = main_bart->get_sigma();
+    else
+      sigma = 1;
+    //Rcout << sigma << std::endl;
     bart_pre = colMeans(main_bart->predict(cbind(this->X, this->pi)));
     
     Z_1 = (Z == 1.0);
     X_Z = sliceRows(X, Z_1);
     Y_Z = Y[Z_1] - bart_pre[Z_1];
     cbart = new bart_model(X_Z, Y_Z, 100L, false, false, false, 100);
-    cbart->update(50, 50, 1, false, 10L);
+    cbart->update(sigma, 50, 50, 1, false, 10L);
     Z_cbart = NumericVector(Y.length());
     this->update_Z_cbart();
   };
   
   void update_Z_cbart(){
+    //Rcout << "update Z" << std::endl;
     cbart_pre = colMeans(cbart->predict(X_Z));
+    //Rcout << mean(cbart_pre) << std::endl;
     Z_cbart[Z_1] = cbart_pre;
+    //Rcout << "complete update Z" << std::endl;
   }
   
   void update(bool verbose = false) override{
+    //Rcout << "set BART" << std::endl;
     main_bart->set_data(cbind(X, pi), Y - Z_cbart);
-    main_bart->update(1, 1, 1, verbose, 10L);
-    sigma = main_bart->get_sigma();
+    //Rcout << "update BART" << std::endl;
+    main_bart->update(sigma, 1, 1, 1, false, 10L);
     bart_pre = colMeans(main_bart->predict(cbind(X, pi)));
+    //Rcout << mean(bart_pre) << std::endl;
+    //Rcout << "complete update BART" << std::endl;
+    
+    //Rcout << "set CBART" << std::endl;
     Y_Z = Y[Z_1] - bart_pre[Z_1];
+    //Rcout << mean(Y_Z ) << std::endl;
+    //Rcout << "update CBART" << std::endl;
+    //Rcout << Y_Z.length() << " " << X_Z.nrow() << " " << X_Z.ncol() << std::endl;
     cbart->set_data(X_Z, Y_Z);
-    cbart->update(1, 1, 1, false, 10L);
+    //Rcout << "after setting CBART, start to update" << std::endl;
+    cbart->update(sigma, 1, 1, 1, false, 10L);
+    //Rcout << "complete update CBART" << std::endl;
     this->update_Z_cbart();
+    
+    if(!this->binary){
+      //Rcout << "update sigma" << std::endl;
+      NumericVector a = Y - Z_cbart - bart_pre;
+      double rss = sum(pow(Y - Z_cbart - bart_pre, 2));
+      sigma = main_bart->get_invchi(n, rss);
+      Rcout << rss << "  " << sigma << std::endl;
+      //Rcout << "complete update sigma" << std::endl;
+    }else{
+      for(int i = 0; i < n; ++i){
+        if(Y[i] < 0){
+          NumericVector mean_y = rtruncnorm(1, bart_pre[i] + Z_cbart[i], sigma, R_NegInf, 0);
+          Y[i] = mean_y[0];
+        }else{
+          NumericVector mean_y = rtruncnorm(1, bart_pre[i] + Z_cbart[i], sigma, 0, R_PosInf);
+          Y[i] = mean_y[0];
+        }
+      }
+    }
   };
   
   List predict(NumericMatrix X_test, NumericVector pi_test) override{
-    long n = X_test.nrow();
-    NumericVector Z_1 (n, 1);
-    NumericVector Z_0 (n, 0);
+    long N = X_test.nrow();
+    NumericVector Z_1 (N, 1);
+    NumericVector Z_0 (N, 0);
     NumericVector outcome_0 = colMeans(main_bart->predict(cbind(X_test, pi_test)));
     NumericVector outcome_1 = outcome_0 + colMeans(cbart->predict(X_test));
+    if(this->binary){
+      for(int i = 0; i < N; ++i){
+        outcome_1[i] = R::rbinom(1, R::pnorm(outcome_1[i], 0, 1, true, false));
+        outcome_0[i] = R::rbinom(1, R::pnorm(outcome_0[i], 0, 1, true, false));
+      }
+    }else{
+      for(int i = 0; i < N; ++i){
+        outcome_1[i] = outcome_1[i] + R::rnorm(0, sigma);
+        outcome_0[i] = outcome_0[i] + R::rnorm(0, sigma);
+      }
+    }
     return List::create(Named("outcome_1") = outcome_1, Named("outcome_0") = outcome_0);
   };
   
@@ -186,7 +235,8 @@ public:
       Named("sigma") = sigma,
       Named("bart_pre") = bart_pre,
       Named("cbart_pre") = cbart_pre,
-      Named("Z_cbart") = Z_cbart
+      Named("Z_cbart") = Z_cbart,
+      Named("Y_hat") = Y
     );
   };
   
