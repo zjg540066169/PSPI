@@ -148,11 +148,12 @@ bartModelMatrix=function(X, numcut=0L, usequants=FALSE, type=7,
 */
 
 // [[Rcpp::export]]
-List MCMC_BART_Causal(NumericMatrix X, NumericVector Y, NumericVector Z, NumericVector pi, NumericMatrix X_test, NumericVector pi_test, int model, long nburn, long npost, bool binary = false, bool verbose = false){
+List MCMC_BART_Causal(NumericMatrix X, NumericVector Y, NumericVector Z, NumericVector pi, NumericMatrix X_test, NumericVector pi_test, int model, long nburn, long npost, bool binary = false, bool verbose = false, bool reverse = false, int ntrees_s = 200){
   BARTforCausal * cmodel;
   if(binary){
     Y = Y * 2 - 1;
   }
+  
   
   NumericMatrix X_ = clone(X);
   NumericVector Y_ = clone(Y);
@@ -162,23 +163,31 @@ List MCMC_BART_Causal(NumericMatrix X, NumericVector Y, NumericVector Z, Numeric
   NumericMatrix X_test_ = clone(X_test);
   NumericVector pi_test_ = clone(pi_test);
   
+  bool reverse_Z = false;
+  
+  if(reverse && model != 2 && sum(Z == 0) > sum(Z == 1)){
+    Rcout << "reverse Z" << std::endl;
+    reverse_Z = true;
+    Z_ = 1 - Z_;
+  }
+  
   pi_ = 1 / (1 + exp(-1 * pi_));
   pi_test_ = 1 / (1 + exp(-1 * pi_test_));
   switch (model){
   case 1:
-    cmodel = new vanillaBART(X_, Y_, Z_, pi_, binary);
+    cmodel = new vanillaBART(X_, Y_, Z_, pi_, binary, ntrees_s);
     break;
   case 2:
-    cmodel = new causalBART(X_, Y_, Z_, pi_, binary);
+    cmodel = new causalBART(X_, Y_, Z_, pi_, binary, ntrees_s);
     break;
   case 3:
-    cmodel = new model_1(X_, Y_, Z_, pi_, binary);
+    cmodel = new model_1(X_, Y_, Z_, pi_, binary, ntrees_s);
     break;
   case 4:
-    cmodel = new model_2_4(X_, Y_, Z_, pi_, binary);
+    cmodel = new model_2_4(X_, Y_, Z_, pi_, binary, ntrees_s);
     break;
   case 5:
-    cmodel = new model_2_4_spline(X_, Y_, Z_, pi_, binary);
+    cmodel = new model_2_4_spline(X_, Y_, Z_, pi_, binary, ntrees_s);
     break;
   }
   
@@ -202,8 +211,13 @@ List MCMC_BART_Causal(NumericMatrix X, NumericVector Y, NumericVector Z, Numeric
     List posterior = cmodel->get_posterior();
     if(i >= nburn){
        List predict_outcome = cmodel->predict(X_test_, pi_test_);
-       post_outcome0(i - nburn, _) = as<NumericVector>(predict_outcome["outcome_0"]);
-       post_outcome1(i - nburn, _) = as<NumericVector>(predict_outcome["outcome_1"]);
+       if(reverse_Z){
+         post_outcome0(i - nburn, _) = as<NumericVector>(predict_outcome["outcome_1"]);
+         post_outcome1(i - nburn, _) = as<NumericVector>(predict_outcome["outcome_0"]);
+       }else{
+         post_outcome0(i - nburn, _) = as<NumericVector>(predict_outcome["outcome_0"]);
+         post_outcome1(i - nburn, _) = as<NumericVector>(predict_outcome["outcome_1"]);
+       }
        post_te(i - nburn, _) = post_outcome1(i - nburn, _) - post_outcome0(i - nburn, _);
        post_sigma[i - nburn] = posterior["sigma"];
        post_Y_star(i - nburn, _) = as<NumericVector>(posterior["Y_hat"]);

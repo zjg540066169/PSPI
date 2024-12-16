@@ -163,8 +163,9 @@ bartModelMatrix=function(X, numcut=0L, usequants=FALSE, type=7,
 
 class model_2_4_spline: public BARTforCausal{
 public:
-  model_2_4_spline(NumericMatrix X_, NumericVector Y_, NumericVector Z_, NumericVector pi_, bool binary) : BARTforCausal(X_, Y_, Z_, pi_, binary){
-    main_bart = new bart_model(cbind(X, pi), Y, 100L, false, false, false, 200);
+  model_2_4_spline(NumericMatrix X_, NumericVector Y_, NumericVector Z_, NumericVector pi_, bool binary, long ntrees_s = 200) : BARTforCausal(X_, Y_, Z_, pi_, binary, ntrees_s){
+    Z_1 = (Z == 1.0);
+    main_bart = new bart_model(sliceRows(cbind(X, pi), !Z_1), Y[!Z_1], 100L, false, false, false, 200);
     main_bart->update(50, 50, 1, false, 10L);
     if(!this->binary)
       sigma = main_bart->get_sigma();
@@ -197,7 +198,7 @@ public:
     // 
     // 
     //Rcout << clm_pi_pre.length() << std::endl;
-    cbart = new bart_model(X_Z, Y_Z - clm_pi_pre, 100L, false, false, false, 100);
+    cbart = new bart_model(X_Z, Y_Z - clm_pi_pre, 100L, false, false, false, ntrees_s);
     cbart->update(sigma, 50, 50, 1, false, 10L);
     cbart_pre = colMeans(cbart->predict(X_Z));
     cbart_pre_mean = mean(cbart_pre); 
@@ -217,7 +218,7 @@ public:
   
   void update(bool verbose = false) override{
     main_bart->set_data(cbind(X, pi), Y - Z_cbart);
-    main_bart->update(sigma, 1, 1, 1, verbose, 10L);
+    main_bart->update(sigma, 1, 1, 1, false, 10L);
     bart_pre = colMeans(main_bart->predict(cbind(X, pi)));
     
     Y_Z = Y[Z_1] - bart_pre[Z_1];

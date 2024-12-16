@@ -141,8 +141,10 @@ bartModelMatrix=function(X, numcut=0L, usequants=FALSE, type=7,
 
 class model_1: public BARTforCausal{
 public:
-  model_1(NumericMatrix X_, NumericVector Y_, NumericVector Z_, NumericVector pi_, bool binary) : BARTforCausal(X_, Y_, Z_, pi_, binary){
-    main_bart = new bart_model(cbind(X, pi), Y, 100L, false, false, false, 200);
+  model_1(NumericMatrix X_, NumericVector Y_, NumericVector Z_, NumericVector pi_, bool binary, long ntrees_s) : BARTforCausal(X_, Y_, Z_, pi_, binary, ntrees_s){
+    Z_1 = (Z == 1.0);
+    main_bart = new bart_model(sliceRows(cbind(X, pi), !Z_1), Y[!Z_1], 100L, false, false, false, 200);
+    //main_bart = new bart_model(cbind(X, pi), Y, 100L, false, false, false, 200);
     main_bart->update(100, 100, 1, false, 10L);
     if(!this->binary)
       sigma = main_bart->get_sigma();
@@ -152,10 +154,10 @@ public:
     //main_bart_mean = mean(bart_pre);
     //bart_pre = bart_pre - main_bart_mean;
     
-    Z_1 = (Z == 1.0);
+    //Z_1 = (Z == 1.0);
     X_Z = sliceRows(cbind(X, pi), Z_1);
     Y_Z = Y[Z_1] - bart_pre[Z_1];
-    cbart = new bart_model(X_Z, Y_Z, 100L, false, false, false, 100);
+    cbart = new bart_model(X_Z, Y_Z, 100L, false, false, false, ntrees_s);
     cbart->update(sigma, 50, 50, 1, false, 10L);
     Z_cbart = NumericVector(Y.length());
     this->update_Z_cbart();
@@ -168,11 +170,9 @@ public:
   
   void update(bool verbose = false) override{
     main_bart->set_data(cbind(X, pi), Y - Z_cbart);
-    main_bart->update(sigma, 1, 1, 1, verbose, 10L);
+    main_bart->update(sigma, 1, 1, 1, false, 10L);
     
     bart_pre = colMeans(main_bart->predict(cbind(X, pi)));
-    //main_bart_mean = mean(bart_pre);
-    //bart_pre = bart_pre - main_bart_mean;
     Y_Z = Y[Z_1] - bart_pre[Z_1];
     cbart->set_data(X_Z, Y_Z);
     cbart->update(sigma, 1, 1, 1, false, 10L);
@@ -180,7 +180,8 @@ public:
     if(!this->binary){
       double rss = sum(pow(Y - Z_cbart - bart_pre, 2));
       sigma = main_bart->get_invchi(n, rss);
-      Rcout << rss << "  " << sigma << std::endl;
+      if (verbose)
+        Rcout << rss << "  " << sigma << std::endl;
     }else{
       for(int i = 0; i < n; ++i){
         if(Y[i] < 0){

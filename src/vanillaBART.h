@@ -148,7 +148,7 @@ bartModelMatrix=function(X, numcut=0L, usequants=FALSE, type=7,
 
 class vanillaBART: public BARTforCausal{
 public:
-  vanillaBART(NumericMatrix X_, NumericVector Y_, NumericVector Z_, NumericVector pi_, bool binary) : BARTforCausal(X_, Y_, Z_, pi_, binary){
+  vanillaBART(NumericMatrix X_, NumericVector Y_, NumericVector Z_, NumericVector pi_, bool binary, long ntrees_s) : BARTforCausal(X_, Y_, Z_, pi_, binary, ntrees_s){
     main_bart = new bart_model(cbind(X, pi, Z), Y, 100L, false, false, false, 200);
     //Rcout << "bart_main";
     main_bart->update(50, 50, 1, false, 10L);

@@ -117,7 +117,7 @@ public:
       double sig2 = arma::as_scalar( arma::trans(resid)*resid/(n-p));
       sigest = pow(sig2, 0.5);
       sigma = sigest;
-      Rcout << sigma << std::endl;
+      //Rcout << sigma << std::endl;
     }
     NumericVector qch;
     qch.push_back(1 - 0.9);

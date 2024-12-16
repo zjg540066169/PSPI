@@ -143,8 +143,9 @@ bartModelMatrix=function(X, numcut=0L, usequants=FALSE, type=7,
 
 class causalBART: public BARTforCausal{
 public:
-  causalBART(NumericMatrix X_, NumericVector Y_, NumericVector Z_, NumericVector pi_, bool binary) : BARTforCausal(X_, Y_, Z_, pi_, binary){
-    main_bart = new bart_model(cbind(X, pi), Y, 100L, false, false, false, 200);
+  causalBART(NumericMatrix X_, NumericVector Y_, NumericVector Z_, NumericVector pi_, bool binary, long ntrees_s) : BARTforCausal(X_, Y_, Z_, pi_, binary, ntrees_s){
+    Z_1 = (Z == 1.0);
+    main_bart = new bart_model(sliceRows(cbind(X, pi), !Z_1), Y[!Z_1], 100L, false, false, false, 200);
     main_bart->update(50, 50, 1, false, 10L);
     if(!this->binary)
       sigma = main_bart->get_sigma();
@@ -156,7 +157,7 @@ public:
     Z_1 = (Z == 1.0);
     X_Z = sliceRows(X, Z_1);
     Y_Z = Y[Z_1] - bart_pre[Z_1];
-    cbart = new bart_model(X_Z, Y_Z, 100L, false, false, false, 100);
+    cbart = new bart_model(X_Z, Y_Z, 100L, false, false, false, ntrees_s);
     cbart->update(sigma, 50, 50, 1, false, 10L);
     Z_cbart = NumericVector(Y.length());
     this->update_Z_cbart();
@@ -195,7 +196,8 @@ public:
       NumericVector a = Y - Z_cbart - bart_pre;
       double rss = sum(pow(Y - Z_cbart - bart_pre, 2));
       sigma = main_bart->get_invchi(n, rss);
-      Rcout << rss << "  " << sigma << std::endl;
+      if (verbose)
+        Rcout << rss << "  " << sigma << std::endl;
       //Rcout << "complete update sigma" << std::endl;
     }else{
       for(int i = 0; i < n; ++i){
