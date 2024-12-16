@@ -1,9 +1,9 @@
 # Load necessary library
 library(mvtnorm) 
-library(rstanarm)
+library(arm)
 library(dplyr)
 
-simulate_overlapping_both = function(selected = 300, n_samples = 5000, seed = NULL){
+simulate_overlapping_both = function(n_samples = 5000, seed = NULL, binary = FALSE){
   # Set the seed for reproducibility
   if(!is.null(seed))
     set.seed(seed)
@@ -32,7 +32,7 @@ simulate_overlapping_both = function(selected = 300, n_samples = 5000, seed = NU
   colnames(data) <- c(paste0("cont_var", 1:n_continuous), paste0("bin_var", 1:n_binary))
   
   #data$Z = rbinom(n_samples, 1, 0.5)
-  data$Z = rbinom(n_samples, 1, 0.5)
+  data$Z = rbinom(n_samples, 1, 0.1)
   
   
   # outcome model
@@ -54,11 +54,11 @@ simulate_overlapping_both = function(selected = 300, n_samples = 5000, seed = NU
     #fixed_coefficients[26] * data$Z * data$cont_var5 + 
     fixed_coefficients[25] * 1 * data$bin_var1 + 
     fixed_coefficients[26] * 1 * data$bin_var2 + 
-    fixed_coefficients[27] * 1 * data$bin_var3 + 
+    fixed_coefficients[27] * 1 * data$bin_var3 
     #data[, 1:20]
     #fixed_coefficients[30] * data$Z * data$bin_var4 + 
     #fixed_coefficients[31] * data$Z * data$bin_var5 +
-    rnorm(n_samples)
+
   
   
   data$outcome0 = as.matrix(data[, 1:20]) %*% fixed_coefficients[1:20] + 
@@ -70,32 +70,29 @@ simulate_overlapping_both = function(selected = 300, n_samples = 5000, seed = NU
     #fixed_coefficients[26] * data$Z * data$cont_var5 + 
     fixed_coefficients[25] * 0 * data$bin_var1 + 
     fixed_coefficients[26] * 0 * data$bin_var2 + 
-    fixed_coefficients[27] * 0 * data$bin_var3 + 
+    fixed_coefficients[27] * 0 * data$bin_var3
     #fixed_coefficients[30] * data$Z * data$bin_var4 + 
     #fixed_coefficients[31] * data$Z * data$bin_var5 +
-    rnorm(n_samples)
+
   
-  
-  #data$outcome = ifelse(data$Z == 1, data$outcome1, data$outcome0)
-  #summary(lm(as.formula(paste("outcome~", paste(paste("cont_var", 1:10, sep = "", collapse = " + "), paste("bin_var", 1:10, sep = "", collapse = " + "), "Z", sep = "+"))), data = data ))
-  
-  
-  
-  
-  
-  
-  
+  if(binary){
+    data$outcome1 = rbinom(n_samples, 1, invlogit(data$outcome1))
+    data$outcome0 = rbinom(n_samples, 1, invlogit(data$outcome0))
+  }else{
+    data$outcome1 =  data$outcome1 + rnorm(n_samples)
+    data$outcome0 =  data$outcome0 + rnorm(n_samples)
+  }
   
   # selection model
   selection_coefficients <- c(-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
                               0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
   
-  pi = invlogit(as.matrix(data[,1:20]) %*% selection_coefficients - 1)
+  pi = invlogit(as.matrix(data[,1:20]) %*% selection_coefficients - 1.95)
   
-  pi = pi / sum(pi) * selected
+  pi = pi# / sum(pi) * selected
   
-  #ID = which(rbinom(length(pi), 1, pi) == 1)
-  ID = sample(1:n_samples, selected, prob = pi)
+  ID = which(rbinom(length(pi), 1, pi) == 1)
+  #ID = sample(1:n_samples, selected, prob = pi)
   data$selected = F
   data$selected[ID] = T
   data$ps = pi
@@ -122,7 +119,7 @@ simulate_overlapping_both = function(selected = 300, n_samples = 5000, seed = NU
 
 
 
-simulate_overlapping_both_quadratic = function(selected = 300, n_samples = 5000, seed = NULL){
+simulate_overlapping_both_quadratic = function(n_samples = 5000, seed = NULL, binary = FALSE){
   # Set the seed for reproducibility
   if(!is.null(seed))
     set.seed(seed)
@@ -159,11 +156,7 @@ simulate_overlapping_both_quadratic = function(selected = 300, n_samples = 5000,
                           0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                           1.0, 2, 0, 0, 0, 0, 0) # Coefficients for Z and interactions
   
-  # fixed_coefficients <- c(2.0, -1.5, 1.2, 0, 0, 0, 0, 0, 0, 0, 
-  #                         2.8, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  #                         3.0, 0.5, 0.9, -1.4, 0.6, 0, 0) # Coefficients for Z and interactions
-  # 
-  
+ 
   data$outcome1 = as.matrix(data[, 1:20]) %*% fixed_coefficients[1:20] + 
     fixed_coefficients[21] * 1 + 
     fixed_coefficients[22] * 1 * data$cont_var1 + 
@@ -173,11 +166,7 @@ simulate_overlapping_both_quadratic = function(selected = 300, n_samples = 5000,
     #fixed_coefficients[26] * data$Z * data$cont_var5 + 
     fixed_coefficients[25] * 1 * data$bin_var1 + 
     fixed_coefficients[26] * 1 * data$bin_var2 + 
-    fixed_coefficients[27] * 1 * data$bin_var3 + 
-    #data[, 1:20]
-    #fixed_coefficients[30] * data$Z * data$bin_var4 + 
-    #fixed_coefficients[31] * data$Z * data$bin_var5 +
-    rnorm(n_samples)
+    fixed_coefficients[27] * 1 * data$bin_var3 
   
   
   data$outcome0 = as.matrix(data[, 1:20]) %*% fixed_coefficients[1:20] + 
@@ -189,22 +178,25 @@ simulate_overlapping_both_quadratic = function(selected = 300, n_samples = 5000,
     #fixed_coefficients[26] * data$Z * data$cont_var5 + 
     fixed_coefficients[25] * 0 * data$bin_var1 + 
     fixed_coefficients[26] * 0 * data$bin_var2 + 
-    fixed_coefficients[27] * 0 * data$bin_var3 + 
-    #fixed_coefficients[30] * data$Z * data$bin_var4 + 
-    #fixed_coefficients[31] * data$Z * data$bin_var5 +
-    rnorm(n_samples)
+    fixed_coefficients[27] * 0 * data$bin_var3 
   
   
   #data$outcome = ifelse(data$Z == 1, data$outcome1, data$outcome0)
   #summary(lm(as.formula(paste("outcome~", paste(paste("cont_var", 1:10, sep = "", collapse = " + "), paste("bin_var", 1:10, sep = "", collapse = " + "), "Z", sep = "+"))), data = data ))
   
+  if(binary){
+    data$outcome1 = rbinom(n_samples, 1, invlogit(data$outcome1))
+    data$outcome0 = rbinom(n_samples, 1, invlogit(data$outcome0))
+  }else{
+    data$outcome1 =  data$outcome1 + rnorm(n_samples)
+    data$outcome0 =  data$outcome0 + rnorm(n_samples)
+  }
   
   
   
   
   
-  
-  #pi = invlogit(-x1 - 2 x1^2) 
+  #pi = invlogit(-x1 - 2 x1^2 - 0.83) 
   # selection model
   selection_coefficients <- c(-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
                               0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
@@ -212,12 +204,12 @@ simulate_overlapping_both_quadratic = function(selected = 300, n_samples = 5000,
   selection_coefficients_2 <- c(-2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
                               0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
   
-  pi = invlogit(as.matrix(data[,1:20]) %*% selection_coefficients + as.matrix(data[,1:20])^2 %*% selection_coefficients_2)
+  pi = invlogit(as.matrix(data[,1:20]) %*% selection_coefficients + as.matrix(data[,1:20])^2 %*% selection_coefficients_2 - 0.83)
   
-  pi = pi / sum(pi) * selected
+  pi = pi #/ sum(pi) * selected
   
-  #ID = which(rbinom(length(pi), 1, pi) == 1)
-  ID = sample(1:n_samples, selected, prob = pi)
+  ID = which(rbinom(length(pi), 1, pi) == 1)
+  #ID = sample(1:n_samples, selected, prob = pi)
   data$selected = F
   data$selected[ID] = T
   data$ps = pi
@@ -243,7 +235,7 @@ simulate_overlapping_both_quadratic = function(selected = 300, n_samples = 5000,
 
 
 
-simulate_high_outcome_low_selection = function(selected = 300, n_samples = 5000, seed = NULL){
+simulate_high_outcome_low_selection = function(n_samples = 5000, seed = NULL, binary = FALSE){
   # Set the seed for reproducibility
   if(!is.null(seed))
     set.seed(seed)
@@ -295,11 +287,7 @@ simulate_high_outcome_low_selection = function(selected = 300, n_samples = 5000,
     #fixed_coefficients[26] * data$Z * data$cont_var5 + 
     fixed_coefficients[25] * 1 * data$bin_var1 + 
     fixed_coefficients[26] * 1 * data$bin_var2 + 
-    fixed_coefficients[27] * 1 * data$bin_var3 + 
-    #data[, 1:20]
-    #fixed_coefficients[30] * data$Z * data$bin_var4 + 
-    #fixed_coefficients[31] * data$Z * data$bin_var5 +
-    rnorm(n_samples)
+    fixed_coefficients[27] * 1 * data$bin_var3
   
   
   data$outcome0 = as.matrix(data[, 1:20]) %*% fixed_coefficients[1:20] + 
@@ -311,31 +299,26 @@ simulate_high_outcome_low_selection = function(selected = 300, n_samples = 5000,
     #fixed_coefficients[26] * data$Z * data$cont_var5 + 
     fixed_coefficients[25] * 0 * data$bin_var1 + 
     fixed_coefficients[26] * 0 * data$bin_var2 + 
-    fixed_coefficients[27] * 0 * data$bin_var3 + 
-    #fixed_coefficients[30] * data$Z * data$bin_var4 + 
-    #fixed_coefficients[31] * data$Z * data$bin_var5 +
-    rnorm(n_samples)
+    fixed_coefficients[27] * 0 * data$bin_var3
   
   
-  #data$outcome = ifelse(data$Z == 1, data$outcome1, data$outcome0)
-  #summary(lm(as.formula(paste("outcome~", paste(paste("cont_var", 1:10, sep = "", collapse = " + "), paste("bin_var", 1:10, sep = "", collapse = " + "), "Z", sep = "+"))), data = data ))
-  
-  
-  
-  
-  
-  
-  
+  if(binary){
+    data$outcome1 = rbinom(n_samples, 1, invlogit(data$outcome1))
+    data$outcome0 = rbinom(n_samples, 1, invlogit(data$outcome0))
+  }else{
+    data$outcome1 =  data$outcome1 + rnorm(n_samples)
+    data$outcome0 =  data$outcome0 + rnorm(n_samples)
+  }
   
   # selection model
   selection_coefficients <- c(0.2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
                               0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
   
-  pi = invlogit(as.matrix(data[,1:20]) %*% selection_coefficients - 2)
+  pi = invlogit(as.matrix(data[,1:20]) %*% selection_coefficients - 1.65)
   
-  pi = pi / sum(pi) * selected
-  
-  ID = sample(1:n_samples, selected, prob = pi)
+  pi = pi #/ sum(pi) * selected
+  ID = which(rbinom(length(pi), 1, pi) == 1)
+  #ID = sample(1:n_samples, selected, prob = pi)
   data$selected = F
   data$selected[ID] = T
   data$ps = pi
@@ -362,7 +345,7 @@ simulate_high_outcome_low_selection = function(selected = 300, n_samples = 5000,
 }
 
 
-simulate_low_outcome_high_selection = function(selected = 300, n_samples = 5000, seed = NULL){
+simulate_low_outcome_high_selection = function(selected = 300, n_samples = 5000, seed = NULL, binary = FALSE){
   # Set the seed for reproducibility
   if(!is.null(seed))
     set.seed(seed)
@@ -413,12 +396,7 @@ simulate_low_outcome_high_selection = function(selected = 300, n_samples = 5000,
     #fixed_coefficients[26] * data$Z * data$cont_var5 + 
     fixed_coefficients[25] * 1 * data$bin_var1 + 
     fixed_coefficients[26] * 1 * data$bin_var2 + 
-    fixed_coefficients[27] * 1 * data$bin_var3 + 
-    #data[, 1:20]
-    #fixed_coefficients[30] * data$Z * data$bin_var4 + 
-    #fixed_coefficients[31] * data$Z * data$bin_var5 +
-    rnorm(n_samples)
-  
+    fixed_coefficients[27] * 1 * data$bin_var3 
   
   data$outcome0 = as.matrix(data[, 1:20]) %*% fixed_coefficients[1:20] + 
     fixed_coefficients[21] * 0 + 
@@ -429,10 +407,15 @@ simulate_low_outcome_high_selection = function(selected = 300, n_samples = 5000,
     #fixed_coefficients[26] * data$Z * data$cont_var5 + 
     fixed_coefficients[25] * 0 * data$bin_var1 + 
     fixed_coefficients[26] * 0 * data$bin_var2 + 
-    fixed_coefficients[27] * 0 * data$bin_var3 + 
-    #fixed_coefficients[30] * data$Z * data$bin_var4 + 
-    #fixed_coefficients[31] * data$Z * data$bin_var5 +
-    rnorm(n_samples)
+    fixed_coefficients[27] * 0 * data$bin_var3
+  
+  if(binary){
+    data$outcome1 = rbinom(n_samples, 1, invlogit(data$outcome1))
+    data$outcome0 = rbinom(n_samples, 1, invlogit(data$outcome0))
+  }else{
+    data$outcome1 =  data$outcome1 + rnorm(n_samples)
+    data$outcome0 =  data$outcome0 + rnorm(n_samples)
+  }
   
   
   #data$outcome = ifelse(data$Z == 1, data$outcome1, data$outcome0)
@@ -449,12 +432,12 @@ simulate_low_outcome_high_selection = function(selected = 300, n_samples = 5000,
   selection_coefficients <- c(-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
                               0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
   
-  pi = invlogit(as.matrix(data[,1:20]) %*% selection_coefficients + 1)
+  pi = invlogit(as.matrix(data[,1:20]) %*% selection_coefficients - 1.95)
   #print(summary(pi))
   
-  pi = pi / sum(pi) * selected
-  
-  ID = sample(1:n_samples, selected, prob = pi)
+  pi = pi# / sum(pi) * selected
+  ID = which(rbinom(length(pi), 1, pi) == 1)
+  #ID = sample(1:n_samples, selected, prob = pi)
   data$selected = F
   data$selected[ID] = T
   data$ps = pi
@@ -479,47 +462,3 @@ simulate_low_outcome_high_selection = function(selected = 300, n_samples = 5000,
   
   return(list(data = data, trials = trials, EHR = EHR))
 }
-
-
-
-
-
-
-
-
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# summary(lm(outcome1 - outcome0~ 0 + ., data = data[, -24]))
-# summary(glm(selected~ 1 + .*Z, data = data[,-c(22, 23)]))
-# 
-# cor(data$cont_var3, data$selected)
-# 
-# 
-# 
-# summary(sapply(1:100, function(i){
-#   sim = simulate_low_outcome_high_selection(selected = 300, n_samples = 5000, seed = i)
-#   
-#   data = sim$data
-#   mean(data$outcome0)
-#   mean(data$outcome1)
-#   mean(data$outcome0[data$selected])
-#   mean(data$outcome1[data$selected])
-#   mean(sim$trials$outcome[sim$trials$Z == 1]) - mean(sim$trials$outcome[sim$trials$Z == 0]) - (mean(data$outcome1) - mean(data$outcome0))
-#   #mean(data$outcome1[data$selected]) - mean(data$outcome0[data$selected]) - (mean(data$outcome1) - mean(data$outcome0))
-#   #mean(data$outcome1[data$selected]) - mean(data$outcome1)
-# }))
-# 
-# 
-# data %>% 
-#   mutate(selected = factor(selected, levels = c(F, T))) %>% 
-#   ggplot() + geom_point(aes(x = cont_var3, y = outcome1 - outcome0, color = selected))
-# 
-# 
