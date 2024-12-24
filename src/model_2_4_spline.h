@@ -163,7 +163,7 @@ bartModelMatrix=function(X, numcut=0L, usequants=FALSE, type=7,
 
 class model_2_4_spline: public BARTforCausal{
 public:
-  model_2_4_spline(NumericMatrix X_, NumericVector Y_, NumericVector Z_, NumericVector pi_, bool binary, long ntrees_s = 200) : BARTforCausal(X_, Y_, Z_, pi_, binary, ntrees_s){
+  model_2_4_spline(NumericMatrix X_, NumericVector Y_, NumericVector Z_, NumericVector pi_, NumericMatrix X_test_, bool binary, long ntrees_s = 200) : BARTforCausal(X_, Y_, Z_, pi_, X_test_, binary, ntrees_s){
     Z_1 = (Z == 1.0);
     main_bart = new bart_model(sliceRows(cbind(X, pi), !Z_1), Y[!Z_1], 100L, false, false, false, 200);
     main_bart->update(50, 50, 1, false, 10L);
@@ -201,7 +201,9 @@ public:
     cbart = new bart_model(X_Z, Y_Z - clm_pi_pre, 100L, false, false, false, ntrees_s);
     cbart->update(sigma, 50, 50, 1, false, 10L);
     cbart_pre = colMeans(cbart->predict(X_Z));
-    cbart_pre_mean = mean(cbart_pre); 
+    cbart_pop = colMeans(cbart->predict(X_test));
+    cbart_pre_mean = mean(cbart_pop);
+    cbart_pop = cbart_pop - cbart_pre_mean;
     cbart_pre = cbart_pre - cbart_pre_mean;
     // 
     Z_cbart = NumericVector(Y.length());
@@ -227,8 +229,12 @@ public:
     cbart->set_data(X_Z, Y_Z - clm_pi_pre);
     cbart->update(sigma, 1, 1, 1, false, 10L);
     cbart_pre = colMeans(cbart->predict(X_Z));
-    cbart_pre_mean = mean(cbart_pre);
+    cbart_pop = colMeans(cbart->predict(X_test));
+    cbart_pre_mean = mean(cbart_pop);
+    cbart_pop = cbart_pop - cbart_pre_mean;
     cbart_pre = cbart_pre - cbart_pre_mean;
+    
+    //Rcout << mean(cbart_pop) << "  " << mean(cbart_pre) << std::endl;
     // 
     // 
     NumericVector y_te = Y_Z - cbart_pre;
@@ -254,14 +260,14 @@ public:
     }
   };
   
-  List predict(NumericMatrix X_test, NumericVector pi_test) override{
+  List predict(NumericVector pi_test) override{
     long N = X_test.nrow();
     
     bs->set_x(pi_test);
     //bsp_obj->set_knot_sequence(boundary_knots);
     NumericMatrix pi_test_Z = wrap(bs->basis(true));
     NumericVector outcome_0 = colMeans(main_bart->predict(cbind(X_test, pi_test)));
-    NumericVector outcome_1 = outcome_0 + colMeans(cbart->predict(X_test)) - cbart_pre_mean + clm_pi->predict(pi_test_Z, true);
+    NumericVector outcome_1 = outcome_0 + cbart_pop + clm_pi->predict(pi_test_Z, true);
     if(this->binary){
       for(int i = 0; i < N; ++i){
         outcome_1[i] = R::rbinom(1, R::pnorm(outcome_1[i], 0, 1, true, false));
@@ -305,7 +311,7 @@ private:
   NumericVector cbart_pre;
   double cbart_pre_mean;
   NumericVector clm_pi_pre;
-  
+  NumericVector cbart_pop;
   
   
 };

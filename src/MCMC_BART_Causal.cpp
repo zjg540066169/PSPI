@@ -175,19 +175,19 @@ List MCMC_BART_Causal(NumericMatrix X, NumericVector Y, NumericVector Z, Numeric
   pi_test_ = 1 / (1 + exp(-1 * pi_test_));
   switch (model){
   case 1:
-    cmodel = new vanillaBART(X_, Y_, Z_, pi_, binary, ntrees_s);
+    cmodel = new vanillaBART(X_, Y_, Z_, pi_, X_test_, binary, ntrees_s);
     break;
   case 2:
-    cmodel = new causalBART(X_, Y_, Z_, pi_, binary, ntrees_s);
+    cmodel = new causalBART(X_, Y_, Z_, pi_, X_test_, binary, ntrees_s);
     break;
   case 3:
-    cmodel = new model_1(X_, Y_, Z_, pi_, binary, ntrees_s);
+    cmodel = new model_1(X_, Y_, Z_, pi_, X_test_, binary, ntrees_s);
     break;
   case 4:
-    cmodel = new model_2_4(X_, Y_, Z_, pi_, binary, ntrees_s);
+    cmodel = new model_2_4(X_, Y_, Z_, pi_, X_test_, binary, ntrees_s);
     break;
   case 5:
-    cmodel = new model_2_4_spline(X_, Y_, Z_, pi_, binary, ntrees_s);
+    cmodel = new model_2_4_spline(X_, Y_, Z_, pi_, X_test_, binary, ntrees_s);
     break;
   }
   
@@ -210,7 +210,7 @@ List MCMC_BART_Causal(NumericMatrix X, NumericVector Y, NumericVector Z, Numeric
     cmodel->update(verbose);
     List posterior = cmodel->get_posterior();
     if(i >= nburn){
-       List predict_outcome = cmodel->predict(X_test_, pi_test_);
+       List predict_outcome = cmodel->predict(pi_test_);
        if(reverse_Z){
          post_outcome0(i - nburn, _) = as<NumericVector>(predict_outcome["outcome_1"]);
          post_outcome1(i - nburn, _) = as<NumericVector>(predict_outcome["outcome_0"]);

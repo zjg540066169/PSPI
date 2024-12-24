@@ -143,7 +143,7 @@ bartModelMatrix=function(X, numcut=0L, usequants=FALSE, type=7,
 
 class causalBART: public BARTforCausal{
 public:
-  causalBART(NumericMatrix X_, NumericVector Y_, NumericVector Z_, NumericVector pi_, bool binary, long ntrees_s) : BARTforCausal(X_, Y_, Z_, pi_, binary, ntrees_s){
+  causalBART(NumericMatrix X_, NumericVector Y_, NumericVector Z_, NumericVector pi_, NumericMatrix X_test_, bool binary, long ntrees_s) : BARTforCausal(X_, Y_, Z_, pi_, X_test_, binary, ntrees_s){
     Z_1 = (Z == 1.0);
     main_bart = new bart_model(sliceRows(cbind(X, pi), !Z_1), Y[!Z_1], 100L, false, false, false, 200);
     main_bart->update(50, 50, 1, false, 10L);
@@ -212,7 +212,7 @@ public:
     }
   };
   
-  List predict(NumericMatrix X_test, NumericVector pi_test) override{
+  List predict(NumericVector pi_test) override{
     long N = X_test.nrow();
     NumericVector Z_1 (N, 1);
     NumericVector Z_0 (N, 0);

@@ -148,7 +148,7 @@ bartModelMatrix=function(X, numcut=0L, usequants=FALSE, type=7,
 
 class BARTforCausal{
 public:
-  BARTforCausal(NumericMatrix X_, NumericVector Y_, NumericVector Z_, NumericVector pi_, bool binary, long ntrees_s = 200){
+  BARTforCausal(NumericMatrix X_, NumericVector Y_, NumericVector Z_, NumericVector pi_, NumericMatrix X_test_, bool binary, long ntrees_s = 200){
     X = clone(X_);
     Y = Y_;
     Z = clone(Z_);
@@ -157,10 +157,11 @@ public:
     this->binary = binary;
     n = Y.length();
     this->ntrees_s = ntrees_s;
+    this->X_test = X_test_;
     //Rcout << "father initial";
   }
   
-  BARTforCausal(NumericMatrix X_, LogicalVector Y_, NumericVector Z_, NumericVector pi_, bool binary, long ntrees_s = 200){
+  BARTforCausal(NumericMatrix X_, LogicalVector Y_, NumericVector Z_, NumericVector pi_, NumericMatrix X_test_, bool binary, long ntrees_s = 200){
     X = clone(X_);
     Y = as<NumericVector>(clone(Y_)) * 2 - 1;
     Z = clone(Z_);
@@ -169,12 +170,13 @@ public:
     this->binary = binary;
     n = Y.length();
     this->ntrees_s = ntrees_s;
+    this->X_test = X_test_;
     //Rcout << "father initial";
   }
   
   
   virtual void update(bool verbose = false) = 0;
-  virtual List predict(NumericMatrix X_test, NumericVector pi_test) = 0;
+  virtual List predict(NumericVector pi_test) = 0;
   virtual List get_posterior() = 0;
   
   NumericMatrix get_X(){
@@ -255,6 +257,7 @@ public:
   
 protected:
   NumericMatrix X;
+  NumericMatrix X_test;
   NumericVector Y;
   NumericVector Z;
   NumericVector pi;
