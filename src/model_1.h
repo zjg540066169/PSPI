@@ -235,5 +235,5 @@ private:
   NumericVector Z_cbart;
   NumericVector cbart_pre;
   
-  double main_bart_mean;
+  //double main_bart_mean;
 };

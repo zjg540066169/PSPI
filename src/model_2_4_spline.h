@@ -234,7 +234,7 @@ public:
     cbart_pop = cbart_pop - cbart_pre_mean;
     cbart_pre = cbart_pre - cbart_pre_mean;
     
-    //Rcout << mean(cbart_pop) << "  " << mean(cbart_pre) << std::endl;
+    Rcout << mean(cbart_pop) << "  " << mean(cbart_pre) << std::endl;
     // 
     // 
     NumericVector y_te = Y_Z - cbart_pre;
