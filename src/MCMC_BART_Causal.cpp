@@ -196,7 +196,7 @@ List MCMC_BART_Causal(NumericMatrix X, NumericVector Y, NumericVector Z, Numeric
   NumericMatrix post_outcome0(npost, n);
   NumericMatrix post_te(npost, n);
   NumericVector post_sigma(npost);
-  NumericVector post_cbart_pre_mean(npost);
+  NumericVector post_cbart_train(npost);
   NumericMatrix post_Z_cbart(npost, n);
   NumericMatrix post_Y_star(npost, Y.length());
   
@@ -221,9 +221,12 @@ List MCMC_BART_Causal(NumericMatrix X, NumericVector Y, NumericVector Z, Numeric
        post_te(i - nburn, _) = post_outcome1(i - nburn, _) - post_outcome0(i - nburn, _);
        post_sigma[i - nburn] = posterior["sigma"];
        post_Y_star(i - nburn, _) = as<NumericVector>(posterior["Y_hat"]);
+       if(model == 4 || model == 5){
+         post_cbart_train[i - nburn] = posterior["cbart_train"];
+       }
        //post_cbart_pre_mean[i - nburn] = posterior["cbart_pre_mean"];
        //post_Z_cbart(i - nburn, _) = as<NumericVector>(posterior["post_Z_cbart"]);
     }
   }
-  return List::create(Named("post_Z_cbart") = post_Z_cbart,Named("post_cbart_pre_mean") = post_cbart_pre_mean, Named("post_outcome1") = post_outcome1, Named("post_outcome0") = post_outcome0, Named("post_te") = post_te, Named("post_sigma") = post_sigma, Named("post_Y_star") = post_Y_star);
+  return List::create(Named("post_Z_cbart") = post_Z_cbart,Named("post_cbart_train") = post_cbart_train, Named("post_outcome1") = post_outcome1, Named("post_outcome0") = post_outcome0, Named("post_te") = post_te, Named("post_sigma") = post_sigma, Named("post_Y_star") = post_Y_star);
 }

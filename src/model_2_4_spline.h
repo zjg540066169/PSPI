@@ -233,8 +233,9 @@ public:
     cbart_pre_mean = mean(cbart_pop);
     cbart_pop = cbart_pop - cbart_pre_mean;
     cbart_pre = cbart_pre - cbart_pre_mean;
+    cbart_train = sum(cbart_pre);
+    //Rcout << sum(cbart_pop) << "  " << sum(cbart_pre) << std::endl;
     
-    Rcout << mean(cbart_pop) << "  " << mean(cbart_pre) << std::endl;
     // 
     // 
     NumericVector y_te = Y_Z - cbart_pre;
@@ -290,7 +291,8 @@ public:
       Named("Z_cbart") = Z_cbart,
       Named("clm_pi_pre") = clm_pi_pre,
       Named("cbart_pre_mean") = cbart_pre_mean,
-      Named("Y_hat") = Y
+      Named("Y_hat") = Y,
+      Named("cbart_train") = cbart_train
     );
   };
   
@@ -312,6 +314,6 @@ private:
   double cbart_pre_mean;
   NumericVector clm_pi_pre;
   NumericVector cbart_pop;
-  
+  double cbart_train;
   
 };
