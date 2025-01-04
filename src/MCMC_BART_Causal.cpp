@@ -15,6 +15,7 @@
 #include "model_1.h"
 #include "model_2_4.h"
 #include "model_2_4_spline.h"
+#include "model_2_5_spline.h"
 // [[Rcpp::depends(RcppProgress)]]
 #include <progress.hpp>
 #include <progress_bar.hpp>
@@ -162,7 +163,7 @@ List MCMC_BART_Causal(NumericMatrix X, NumericVector Y, NumericVector Z, Numeric
   
   NumericMatrix X_test_ = clone(X_test);
   NumericVector pi_test_ = clone(pi_test);
-  
+   
   bool reverse_Z = false;
   
   if(reverse && model != 2 && sum(Z == 0) > sum(Z == 1)){
@@ -171,8 +172,8 @@ List MCMC_BART_Causal(NumericMatrix X, NumericVector Y, NumericVector Z, Numeric
     Z_ = 1 - Z_;
   }
   
-  pi_ = 1 / (1 + exp(-1 * pi_));
-  pi_test_ = 1 / (1 + exp(-1 * pi_test_));
+  //pi_ = log(pi_ / (1 - pi_)); //1 / (1 + exp(-1 * pi_));
+  //pi_test_ = log(pi_test_ / (1 - pi_test_)); //1 / (1 + exp(-1 * pi_test_));
   switch (model){
   case 1:
     cmodel = new vanillaBART(X_, Y_, Z_, pi_, X_test_, binary, ntrees_s);
@@ -188,6 +189,9 @@ List MCMC_BART_Causal(NumericMatrix X, NumericVector Y, NumericVector Z, Numeric
     break;
   case 5:
     cmodel = new model_2_4_spline(X_, Y_, Z_, pi_, X_test_, binary, ntrees_s);
+    break;
+  case 6:
+    cmodel = new model_2_5_spline(X_, Y_, Z_, pi_, X_test_, binary, ntrees_s);
     break;
   }
   

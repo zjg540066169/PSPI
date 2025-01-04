@@ -4,11 +4,11 @@
 // [[Rcpp::depends(RcppArmadillo)]]
 #endif
 
-#ifndef SPLINE_ARMADILLO_H_
-#define SPLINE_ARMADILLO_H_
-#include <splines2Armadillo.h>
-// [[Rcpp::depends(splines2)]]
-#endif
+// #ifndef SPLINE_ARMADILLO_H_
+// #define SPLINE_ARMADILLO_H_
+// #include <splines2Armadillo.h>
+// // [[Rcpp::depends(splines2)]]
+// #endif
 
 #ifndef CBART_H_
 #define CBART_H_
@@ -18,6 +18,11 @@
 #ifndef REGRESSION_H_
 #define REGRESSION_H_
 #include "regression_model.h"
+#endif
+
+#ifndef NS_H_
+#define NS_H_
+#include "NS.h"
 #endif
 
 
@@ -38,7 +43,7 @@
 
 
 using namespace Rcpp;
-using namespace splines2;
+
 /*** R
 bartModelMatrix=function(X, numcut=0L, usequants=FALSE, type=7,
                          rm.const=FALSE, cont=FALSE, xinfo=NULL) {
@@ -165,7 +170,7 @@ class model_2_4_spline: public BARTforCausal{
 public:
   model_2_4_spline(NumericMatrix X_, NumericVector Y_, NumericVector Z_, NumericVector pi_, NumericMatrix X_test_, bool binary, long ntrees_s = 200) : BARTforCausal(X_, Y_, Z_, pi_, X_test_, binary, ntrees_s){
     Z_1 = (Z == 1.0);
-    main_bart = new bart_model(sliceRows(cbind(X, pi), !Z_1), Y[!Z_1], 100L, false, false, false, 200);
+    main_bart = new bart_model(cbind(X, pi), Y, 100L, false, false, false, 200);
     main_bart->update(50, 50, 1, false, 10L);
     if(!this->binary)
       sigma = main_bart->get_sigma();
@@ -177,27 +182,11 @@ public:
     X_Z = sliceRows(X, Z_1);
     Y_Z = Y[Z_1] - bart_pre[Z_1];
     
+
+    ns = new NS(as<NumericVector>(pi[Z_1]), Y_Z, std::min(10, (int)(Z_1.length() / 4)), sigma);
+    ns->update(sigma);
+    clm_pi_pre = ns->get_ns_outcome();
     
-    bs = new NaturalSpline(as<NumericVector>(pi[Z_1]), 2 + std::min(10, (int)(Y_.length() / 4)));
-    pi_Z = wrap(bs->basis(true));
-  
-    //Rcout << arma::rank(as<mat>(pi_Z)) << std::endl;
-    //mat q = inv_sympd(as<mat>(pi_Z).t() * as<mat>(pi_Z)) * as<mat>(pi_Z).t();
-    //vec Y_a = as<vec>(Y_Z); 
-    //Rcout<<pi_Z.ncol() << " " << pi_Z.nrow() << std::endl;
-    //Rcout<<Y_Z.length() << std::endl;
-    //Rcout << Y_Z. << std::endl;
-    clm_pi = new regression_model(pi_Z, Y_Z, true);
-    //Rcout << clm_pi->get_beta() << std::endl;
-    //Rcout << clm_pi->get_sigma() << std::endl;
-    //Rcout<<  Y_Z << std::endl;
-    clm_pi->update();
-    // 
-    clm_pi_pre = clm_pi->predict(pi_Z, true);
-    // //Rcout << clm_pi->get_beta() << std::endl;
-    // 
-    // 
-    //Rcout << clm_pi_pre.length() << std::endl;
     cbart = new bart_model(X_Z, Y_Z - clm_pi_pre, 100L, false, false, false, ntrees_s);
     cbart->update(sigma, 50, 50, 1, false, 10L);
     cbart_pre = colMeans(cbart->predict(X_Z));
@@ -205,17 +194,14 @@ public:
     cbart_pre_mean = mean(cbart_pop);
     cbart_pop = cbart_pop - cbart_pre_mean;
     cbart_pre = cbart_pre - cbart_pre_mean;
-    // 
+ 
     Z_cbart = NumericVector(Y.length());
     this->update_Z_cbart();
   };
   
   void update_Z_cbart(){
-    //Rcout << sum(cbart_pre) << std::endl;
     NumericVector Z_cbart_Z_1 = cbart_pre + clm_pi_pre;
-    //Rcout << Z_cbart_Z_1.length() << std::endl;
     Z_cbart[Z_1] = Z_cbart_Z_1;
-    //Rcout << Z_cbart << std::endl;
   }
   
   void update(bool verbose = false) override{
@@ -234,14 +220,14 @@ public:
     cbart_pop = cbart_pop - cbart_pre_mean;
     cbart_pre = cbart_pre - cbart_pre_mean;
     cbart_train = sum(cbart_pre);
-    //Rcout << sum(cbart_pop) << "  " << sum(cbart_pre) << std::endl;
     
-    // 
-    // 
+    
     NumericVector y_te = Y_Z - cbart_pre;
-    clm_pi->set_data(pi_Z, Y_Z - cbart_pre, true);
-    clm_pi->update();
-    clm_pi_pre = clm_pi->predict(pi_Z, true);
+    
+    ns->set_Y(y_te);
+    ns->update(sigma);
+    clm_pi_pre = ns->get_ns_outcome();
+    
     this->update_Z_cbart();
     if(!this->binary){
       double rss = sum(pow(Y - Z_cbart - bart_pre, 2));
@@ -263,12 +249,9 @@ public:
   
   List predict(NumericVector pi_test) override{
     long N = X_test.nrow();
-    
-    bs->set_x(pi_test);
-    //bsp_obj->set_knot_sequence(boundary_knots);
-    NumericMatrix pi_test_Z = wrap(bs->basis(true));
+
     NumericVector outcome_0 = colMeans(main_bart->predict(cbind(X_test, pi_test)));
-    NumericVector outcome_1 = outcome_0 + cbart_pop + clm_pi->predict(pi_test_Z, true);
+    NumericVector outcome_1 = outcome_0 + cbart_pop + ns->predict(pi_test);
     if(this->binary){
       for(int i = 0; i < N; ++i){
         outcome_1[i] = R::rbinom(1, R::pnorm(outcome_1[i], 0, 1, true, false));
@@ -298,11 +281,12 @@ public:
   
   
 private:
-  double sigma;
+  
   NumericVector bart_pre;
   bart_model * cbart;
-  regression_model * clm_pi;
-  NaturalSpline * bs;
+  NS * ns;
+  
+  double sigma;
   
   
   LogicalVector Z_1;

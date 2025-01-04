@@ -55,6 +55,11 @@ public:
     this->sigma = sqrt(update_sigma2(this->X, this->Y, this->beta));
   };
   
+  void update(double sigma){
+    this->sigma = sigma;
+    this->beta = update_beta(this->X, this->Y, this->sigma);
+  };
+  
   void set_data(NumericMatrix x_train, NumericVector y_train, bool has_intecept = true){
     this->has_intecept = has_intecept;
     this->n = y_train.length();

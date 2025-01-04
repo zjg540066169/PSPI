@@ -28,11 +28,11 @@ apiw = function(Y, X, Z, ps, X_pop, ps_pop, normalize = F){
 }
 
 
-apiw_bart = function(Y, X, Z, ps, X_pop, ps_pop, normalize = F){
+apiw_bart = function(Y, X, Z, ps, X_pop, ps_pop, normalize = F, nburn = 5000L, npost = 5000L){
   invisible(capture.output(suppressMessages(outcome_model_treat <- BART::wbart(y.train = Y[Z == 1],
-                                      x.train = X[Z == 1, ], ndpost=5000L, nskip=5000L))))
+                                      x.train = X[Z == 1, ], ndpost=npost, nskip=nburn))))
   invisible(capture.output(suppressMessages(outcome_model_control <- BART::wbart(y.train = Y[Z == 0],
-                                        x.train = X[Z == 0, ], ndpost=5000L, nskip=5000L))))
+                                        x.train = X[Z == 0, ], ndpost=npost, nskip=nburn))))
   invisible(capture.output(suppressMessages(pred_treat <- colMeans(predict(outcome_model_treat, X_pop)))))
   invisible(capture.output(suppressMessages(pred_control <- colMeans(predict(outcome_model_control, X_pop)))))
   if(normalize == FALSE){

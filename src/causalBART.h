@@ -145,7 +145,8 @@ class causalBART: public BARTforCausal{
 public:
   causalBART(NumericMatrix X_, NumericVector Y_, NumericVector Z_, NumericVector pi_, NumericMatrix X_test_, bool binary, long ntrees_s) : BARTforCausal(X_, Y_, Z_, pi_, X_test_, binary, ntrees_s){
     Z_1 = (Z == 1.0);
-    main_bart = new bart_model(sliceRows(cbind(X, pi), !Z_1), Y[!Z_1], 100L, false, false, false, 200);
+    //main_bart = new bart_model(sliceRows(cbind(X, pi), !Z_1), Y[!Z_1], 100L, false, false, false, 200);
+    main_bart = new bart_model(cbind(X, pi), Y, 100L, false, false, false, 200);
     main_bart->update(50, 50, 1, false, 10L);
     if(!this->binary)
       sigma = main_bart->get_sigma();
