@@ -33,11 +33,11 @@ apiw_bart = function(Y, X, Z, ps, X_pop, ps_pop, normalize = F, nburn = 5000L, n
                                       x.train = X[Z == 1, ], ndpost=npost, nskip=nburn))))
   invisible(capture.output(suppressMessages(outcome_model_control <- BART::wbart(y.train = Y[Z == 0],
                                         x.train = X[Z == 0, ], ndpost=npost, nskip=nburn))))
-  invisible(capture.output(suppressMessages(pred_treat <- colMeans(predict(outcome_model_treat, X_pop)))))
-  invisible(capture.output(suppressMessages(pred_control <- colMeans(predict(outcome_model_control, X_pop)))))
+  invisible(capture.output(suppressMessages(pred_treat <- predict(outcome_model_treat, X_pop))))
+  invisible(capture.output(suppressMessages(pred_control <- predict(outcome_model_control, X_pop))))
   if(normalize == FALSE){
-    weights1 <- 1 / (ps * mean(Z)) / length(pred_treat)
-    weights0 <- 1 / (ps * (1 - mean(Z))) / length(pred_control)
+    weights1 <- 1 / (ps * mean(Z)) / length(ps_pop)
+    weights0 <- 1 / (ps * (1 - mean(Z))) / length(ps_pop)
   }else{
     weights1 <- 1 / (ps * mean(Z))
     weights0 <- 1 / (ps * (1 - mean(Z)))
@@ -45,13 +45,23 @@ apiw_bart = function(Y, X, Z, ps, X_pop, ps_pop, normalize = F, nburn = 5000L, n
     weights0 = weights0 / sum(weights0)
   }
   
+  invisible(capture.output(suppressMessages(pred_treat_group1 <- predict(outcome_model_treat, X[Z == 1,]))))
+  invisible(capture.output(suppressMessages(pred_treat_group0 <- predict(outcome_model_control, X[Z == 0,]))))
   
-  invisible(capture.output(suppressMessages(outcome1 <- mean(pred_treat) + sum(weights1[Z == 1] * (Y[Z == 1] -  colMeans(predict(outcome_model_treat, X[Z == 1,])))))))
-  invisible(capture.output(suppressMessages(outcome0 <- mean(pred_control) + sum(weights0[Z == 0] * (Y[Z == 0] -  colMeans(predict(outcome_model_control, X[Z == 0,])))))))
-  return(c(
+  outcome1 = sapply(1:npost, function(i){
+    outcome1 <- mean(pred_treat[i,]) + sum(weights1[Z == 1] * (Y[Z == 1] -  pred_treat_group1[i,]))
+    return(outcome1)
+  })
+  
+  outcome0 = sapply(1:npost, function(i){
+    outcome0 <- mean(pred_control[i,]) + sum(weights0[Z == 0] * (Y[Z == 0] -  pred_treat_group0[i,]))
+    return(outcome0)
+  })
+  
+  return(list(
     outcome1 = outcome1,
     outcome0 = outcome0,
-    PATE = outcome1 - outcome0)
+    ATE = outcome1 - outcome0)
   )
 }
 
