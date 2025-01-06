@@ -254,6 +254,9 @@ public:
       }
       return result;
   }
+  NumericVector logit(NumericVector x){
+    return log(x / (1-x));
+  }
   
 protected:
   NumericMatrix X;

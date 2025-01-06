@@ -164,7 +164,10 @@ class model_2_5_spline: public BARTforCausal{
 public:
   model_2_5_spline(NumericMatrix X_, NumericVector Y_, NumericVector Z_, NumericVector pi_, NumericMatrix X_test_, bool binary, long ntrees_s = 200) : BARTforCausal(X_, Y_, Z_, pi_, X_test_, binary, ntrees_s){
     Z_1 = (Z == 1.0);
+    
     main_bart = new bart_model(X, Y, 100L, false, false, false, 200);
+    
+    //main_bart = new bart_model(X, Y, 100L, false, false, false, 200);
     main_bart->update(50, 50, 1, false, 10L);
     if(!this->binary)
       sigma = main_bart->get_sigma();
@@ -181,6 +184,7 @@ public:
     
     
     main_bs = new NS(as<NumericVector>(pi), Y - bart_pre, std::min(10, (int)(Y_.length() / 4)), sigma);
+    //main_bs = new NS(as<NumericVector>(pi[!Z_1]), as<NumericVector>((Y - bart_pre)[!Z_1]), std::min(10, (int)(Y_.length() / 4)), sigma);
     main_bs->update(sigma);
     main_pi_pre = main_bs->get_ns_outcome();
     

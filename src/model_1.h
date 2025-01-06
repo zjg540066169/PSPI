@@ -144,14 +144,14 @@ public:
   model_1(NumericMatrix X_, NumericVector Y_, NumericVector Z_, NumericVector pi_, NumericMatrix X_test_, bool binary, long ntrees_s) : BARTforCausal(X_, Y_, Z_, pi_, X_test_, binary, ntrees_s){
     Z_1 = (Z == 1.0);
     //main_bart = new bart_model(sliceRows(cbind(X, pi), !Z_1), Y[!Z_1], 100L, false, false, false, 200);
-    main_bart = new bart_model(cbind(X, pi), Y, 100L, false, false, false, 200);
+    main_bart = new bart_model(cbind(X, logit(pi)), Y, 100L, false, false, false, 200);
     //main_bart = new bart_model(cbind(X, pi), Y, 100L, false, false, false, 200);
     main_bart->update(100, 100, 1, false, 10L);
     if(!this->binary)
       sigma = main_bart->get_sigma();
     else
       sigma = 1;
-    bart_pre = colMeans(main_bart->predict(cbind(this->X, this->pi)));
+    bart_pre = colMeans(main_bart->predict(cbind(this->X, logit(this->pi))));
     //main_bart_mean = mean(bart_pre);
     //bart_pre = bart_pre - main_bart_mean;
     
@@ -173,7 +173,7 @@ public:
     main_bart->set_data(cbind(X, pi), Y - Z_cbart);
     main_bart->update(sigma, 1, 1, 1, false, 10L);
     
-    bart_pre = colMeans(main_bart->predict(cbind(X, pi)));
+    bart_pre = colMeans(main_bart->predict(cbind(X, logit(pi))));
     Y_Z = Y[Z_1] - bart_pre[Z_1];
     cbart->set_data(X_Z, Y_Z);
     cbart->update(sigma, 1, 1, 1, false, 10L);
@@ -200,7 +200,7 @@ public:
     long N = X_test.nrow();
     NumericVector Z_1 (N, 1);
     NumericVector Z_0 (N, 0);
-    NumericVector outcome_0 = colMeans(main_bart->predict(cbind(X_test, pi_test)));// - main_bart_mean;
+    NumericVector outcome_0 = colMeans(main_bart->predict(cbind(X_test, logit(pi_test))));// - main_bart_mean;
     NumericVector outcome_1 = outcome_0 + colMeans(cbart->predict(cbind(X_test, pi_test)));
     if(this->binary){
       for(int i = 0; i < N; ++i){

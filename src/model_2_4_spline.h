@@ -170,13 +170,14 @@ class model_2_4_spline: public BARTforCausal{
 public:
   model_2_4_spline(NumericMatrix X_, NumericVector Y_, NumericVector Z_, NumericVector pi_, NumericMatrix X_test_, bool binary, long ntrees_s = 200) : BARTforCausal(X_, Y_, Z_, pi_, X_test_, binary, ntrees_s){
     Z_1 = (Z == 1.0);
-    main_bart = new bart_model(cbind(X, pi), Y, 100L, false, false, false, 200);
+    main_bart = new bart_model(cbind(X, logit(pi)), Y, 100L, false, false, false, 200);
+    //main_bart = new bart_model(sliceRows(cbind(X, pi), !Z_1), Y[!Z_1], 100L, false, false, false, 200);
     main_bart->update(50, 50, 1, false, 10L);
     if(!this->binary)
       sigma = main_bart->get_sigma();
     else
       sigma = 1;
-    bart_pre = colMeans(main_bart->predict(cbind(this->X, this->pi)));
+    bart_pre = colMeans(main_bart->predict(cbind(this->X, logit(this->pi))));
     
     Z_1 = (Z == 1.0);
     X_Z = sliceRows(X, Z_1);
@@ -205,9 +206,9 @@ public:
   }
   
   void update(bool verbose = false) override{
-    main_bart->set_data(cbind(X, pi), Y - Z_cbart);
+    main_bart->set_data(cbind(X, logit(pi)), Y - Z_cbart);
     main_bart->update(sigma, 1, 1, 1, false, 10L);
-    bart_pre = colMeans(main_bart->predict(cbind(X, pi)));
+    bart_pre = colMeans(main_bart->predict(cbind(X, logit(pi))));
     
     Y_Z = Y[Z_1] - bart_pre[Z_1];
     NumericVector Y_Cb = Y_Z - clm_pi_pre;
@@ -250,7 +251,7 @@ public:
   List predict(NumericVector pi_test) override{
     long N = X_test.nrow();
 
-    NumericVector outcome_0 = colMeans(main_bart->predict(cbind(X_test, pi_test)));
+    NumericVector outcome_0 = colMeans(main_bart->predict(cbind(X_test, logit(pi_test))));
     NumericVector outcome_1 = outcome_0 + cbart_pop + ns->predict(pi_test);
     if(this->binary){
       for(int i = 0; i < N; ++i){
