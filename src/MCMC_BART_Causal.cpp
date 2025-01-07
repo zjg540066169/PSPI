@@ -166,7 +166,7 @@ List MCMC_BART_Causal(NumericMatrix X, NumericVector Y, NumericVector Z, Numeric
    
   bool reverse_Z = false;
   
-  if(reverse && model != 2 && sum(Z == 0) > sum(Z == 1)){
+  if(reverse && model != 2 && sum(Z == 0) > sum(Z == 1) * 1.5){
     Rcout << "reverse Z" << std::endl;
     reverse_Z = true;
     Z_ = 1 - Z_;

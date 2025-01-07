@@ -28,13 +28,30 @@ apiw = function(Y, X, Z, ps, X_pop, ps_pop, normalize = F){
 }
 
 
-apiw_bart = function(Y, X, Z, ps, X_pop, ps_pop, normalize = F, nburn = 5000L, npost = 5000L){
-  invisible(capture.output(suppressMessages(outcome_model_treat <- BART::wbart(y.train = Y[Z == 1],
-                                      x.train = X[Z == 1, ], ndpost=npost, nskip=nburn))))
-  invisible(capture.output(suppressMessages(outcome_model_control <- BART::wbart(y.train = Y[Z == 0],
-                                        x.train = X[Z == 0, ], ndpost=npost, nskip=nburn))))
-  invisible(capture.output(suppressMessages(pred_treat <- predict(outcome_model_treat, X_pop))))
-  invisible(capture.output(suppressMessages(pred_control <- predict(outcome_model_control, X_pop))))
+
+
+
+apiw_bart = function(Y, X, Z, ps, X_pop, ps_pop, normalize = F, binary = F, nburn = 5000L, npost = 5000L){
+  if(binary == F){
+    invisible(capture.output(suppressMessages(outcome_model_treat <- BART::wbart(y.train = Y[Z == 1],
+                                                                                 x.train = X[Z == 1, ], ndpost=npost, nskip=nburn))))
+    invisible(capture.output(suppressMessages(outcome_model_control <- BART::wbart(y.train = Y[Z == 0],
+                                                                                   x.train = X[Z == 0, ], ndpost=npost, nskip=nburn))))
+    invisible(capture.output(suppressMessages(pred_treat <- predict(outcome_model_treat, X_pop))))
+    invisible(capture.output(suppressMessages(pred_control <- predict(outcome_model_control, X_pop))))
+  }else{
+    invisible(capture.output(suppressMessages(outcome_model_treat <- BART::pbart(y.train = Y[Z == 1],
+                                                                                 x.train = X[Z == 1, ], ndpost=npost, nskip=nburn))))
+    invisible(capture.output(suppressMessages(outcome_model_control <- BART::pbart(y.train = Y[Z == 0],
+                                                                                   x.train = X[Z == 0, ], ndpost=npost, nskip=nburn))))
+    invisible(capture.output(suppressMessages(pred_treat <- predict(outcome_model_treat, X_pop)$prob.test)))
+    invisible(capture.output(suppressMessages(pred_control <- predict(outcome_model_control, X_pop)$prob.test)))
+  }
+  
+  
+  
+  
+  
   if(normalize == FALSE){
     weights1 <- 1 / (ps * mean(Z)) / length(ps_pop)
     weights0 <- 1 / (ps * (1 - mean(Z))) / length(ps_pop)
@@ -44,19 +61,93 @@ apiw_bart = function(Y, X, Z, ps, X_pop, ps_pop, normalize = F, nburn = 5000L, n
     weights1 = weights1 / sum(weights1)
     weights0 = weights0 / sum(weights0)
   }
-  
-  invisible(capture.output(suppressMessages(pred_treat_group1 <- predict(outcome_model_treat, X[Z == 1,]))))
-  invisible(capture.output(suppressMessages(pred_treat_group0 <- predict(outcome_model_control, X[Z == 0,]))))
-  
+  if(binary == F){
+    invisible(capture.output(suppressMessages(pred_treat_group1 <- predict(outcome_model_treat, X))))
+    invisible(capture.output(suppressMessages(pred_treat_group0 <- predict(outcome_model_control, X))))
+  }else{
+    invisible(capture.output(suppressMessages(pred_treat_group1 <- predict(outcome_model_treat, X)$prob.test)))
+    invisible(capture.output(suppressMessages(pred_treat_group0 <- predict(outcome_model_control, X)$prob.test)))
+  }
   outcome1 = sapply(1:npost, function(i){
-    outcome1 <- mean(pred_treat[i,]) + sum(weights1[Z == 1] * (Y[Z == 1] -  pred_treat_group1[i,]))
+    outcome1 <- mean(pred_treat[i,]) + sum(weights1[Z == 1] * (Y[Z == 1] -  pred_treat_group1[i, Z == 1]))
     return(outcome1)
   })
   
   outcome0 = sapply(1:npost, function(i){
-    outcome0 <- mean(pred_control[i,]) + sum(weights0[Z == 0] * (Y[Z == 0] -  pred_treat_group0[i,]))
+    outcome0 <- mean(pred_control[i,]) + sum(weights0[Z == 0] * (Y[Z == 0] -  pred_treat_group0[i, Z == 0]))
     return(outcome0)
   })
+  
+  
+  
+  
+  # 
+  # pred_treat = colMeans(pred_treat)
+  # pred_control = colMeans(pred_control)
+  # pred_treat_group1 = colMeans(pred_treat_group1)
+  # pred_treat_group0 = colMeans(pred_treat_group0)
+  # 
+  # 
+  # boot_outcome1_result = c()
+  # boot_outcome0_result = c()
+  # 
+  # 
+  # 
+  # 
+  # #boot = foreach(b = 1:bootstrap_n, .combine = rbind) %dopar%{
+  # for (b in 1:bootstrap_n) {
+  #   boot_pop_indices = sample(1:length(ps_pop), size = length(ps_pop), replace = T)
+  #   boot_mcmc_indices = sample(1:npost, size = npost, replace = T)
+  #   boot_Z_1 = sample(which(Z == 1), size = sum(Z == 1), replace = T)
+  #   boot_Z_0 = sample(which(Z == 0), size = sum(Z == 0), replace = T)
+  #   boot_tri_indices = c(boot_Z_1, boot_Z_0)
+  #   
+  #   boot_ps = ps[boot_tri_indices]
+  #   boot_ps_pop = ps_pop[boot_pop_indices]
+  #   boot_Z = Z[boot_tri_indices]
+  #   boot_Y = Y[boot_tri_indices]
+  #   
+  #   if(normalize == FALSE){
+  #     boot_weights1 <- 1 / (boot_ps * mean(boot_Z)) / length(boot_ps_pop)
+  #     boot_weights0 <- 1 / (boot_ps * (1 - mean(boot_Z))) / length(boot_ps_pop)
+  #   }else{
+  #     boot_weights1 <- 1 / (boot_ps * mean(boot_Z))
+  #     boot_weights0 <- 1 / (boot_ps * (1 - mean(boot_Z)))
+  #     boot_weights1 = boot_weights1 / sum(boot_weights1)
+  #     boot_weights0 = boot_weights0 / sum(boot_weights0)
+  #   }
+  #   
+  #   boot_outcome1 = mean(pred_treat[boot_pop_indices]) + sum(boot_weights1[1:length(boot_Z_1)] * (boot_Y[1:length(boot_Z_1)] -  pred_treat_group1[boot_Z_1]))
+  #   boot_outcome0 = mean(pred_control[boot_pop_indices]) + sum(boot_weights0[(length(boot_Z_1)+1):length(boot_tri_indices)] * (boot_Y[(length(boot_Z_1)+1):length(boot_tri_indices)] -  pred_treat_group0[boot_Z_0]))
+  #   # boot_outcome1 = mean(sapply(boot_mcmc_indices, function(i){
+  #   #   outcome1 <- mean(pred_treat[i, boot_pop_indices]) + sum(boot_weights1[1:length(boot_Z_1)] * (boot_Y[1:length(boot_Z_1)] -  pred_treat_group1[i, boot_Z_1]))
+  #   #   return(outcome1)
+  #   # }))
+  #   # 
+  #   # boot_outcome0 = mean(sapply(boot_mcmc_indices, function(i){
+  #   #   outcome0 <- mean(pred_control[i, boot_pop_indices]) + sum(boot_weights0[(length(boot_Z_1)+1):length(boot_tri_indices)] * (boot_Y[(length(boot_Z_1)+1):length(boot_tri_indices)] -  pred_treat_group0[i, boot_Z_0]))
+  #   #   return(outcome0)
+  #   # }))
+  #  # return(c(boot_outcome0, boot_outcome1))
+  #   boot_outcome1_result = c(boot_outcome1_result, boot_outcome1)
+  #   boot_outcome0_result = c(boot_outcome0_result, boot_outcome0)
+  #   
+  # }
+  # 
+  # 
+  # 
+  # 
+  # 
+  # 
+  # c(quantile(boot_outcome1_result, 0.025), quantile(boot_outcome1_result, 0.975))
+  # c(quantile(outcome1, 0.025), quantile(outcome1, 0.975))
+  # 
+  # c(quantile(boot_outcome0_result, 0.025), quantile(boot_outcome0_result, 0.975))
+  # c(quantile(outcome0, 0.025), quantile(outcome0, 0.975))
+  # 
+  # c(quantile(boot_outcome1_result - boot_outcome0_result, 0.025), quantile(boot_outcome1_result - boot_outcome0_result, 0.975))
+  # c(quantile(outcome1 - outcome0, 0.025), quantile(outcome1 - outcome0, 0.975))
+  
   
   return(list(
     outcome1 = outcome1,
@@ -64,6 +155,7 @@ apiw_bart = function(Y, X, Z, ps, X_pop, ps_pop, normalize = F, nburn = 5000L, n
     ATE = outcome1 - outcome0)
   )
 }
+
 
 # 
 # aipw_function <- function(data, indices) {

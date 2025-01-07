@@ -156,7 +156,8 @@ TMLE_generalizable <- function(Y, X, Z, ps, X_pop, ps_pop,
 
 
 TMLE_generalizable_bart <- function(Y, X, Z, ps, X_pop, ps_pop,
-                               use_logit_link = FALSE, nburn = 5000L, npost = 5000L) {
+                               use_logit_link = FALSE, nburn = 5000L, npost = 5000L, binary = F) {
+  if(binary) use_logit_link = FALSE
   Y_src <- Y
   X_src <- X
   Z_src <- Z
@@ -167,6 +168,7 @@ TMLE_generalizable_bart <- function(Y, X, Z, ps, X_pop, ps_pop,
   pZ0 <- 1 - pZ1
   
   # If using a logit link for bounding Y
+  
   if(use_logit_link) {
     y_min <- min(Y_src) - 1e-10
     y_max <- max(Y_src) + 1e-10
@@ -178,17 +180,27 @@ TMLE_generalizable_bart <- function(Y, X, Z, ps, X_pop, ps_pop,
     family <- gaussian()
   }
   
-  # Fit outcome model Q(A,X) using SuperLearner on the source data
-  # Here, we include Z as a covariate. Another approach: Fit separate models for Z=1 and Z=0.
   
-  invisible(capture.output(suppressMessages(Q_fit <- BART::wbart(y.train = Y_fit, x.train = data.frame(X_src, Z=Z_src), ndpost=npost, nskip=nburn))))
   
   # Get initial predictions for Q(A,X)
   newdata_1 <- data.frame(X_src, Z=1)
   newdata_0 <- data.frame(X_src, Z=0)
   
-  invisible(capture.output(suppressMessages(Q1_init <- colMeans(predict(Q_fit, newdata_1)))))
-  invisible(capture.output(suppressMessages(Q0_init <- colMeans(predict(Q_fit, newdata_0)))))
+  # Fit outcome model Q(A,X) using SuperLearner on the source data
+  # Here, we include Z as a covariate. Another approach: Fit separate models for Z=1 and Z=0.
+  if(!binary){
+    invisible(capture.output(suppressMessages(Q_fit <- BART::wbart(y.train = Y_fit, x.train = data.frame(X_src, Z=Z_src), ndpost=npost, nskip=nburn))))
+    invisible(capture.output(suppressMessages(Q1_init <- colMeans(predict(Q_fit, newdata_1)))))
+    invisible(capture.output(suppressMessages(Q0_init <- colMeans(predict(Q_fit, newdata_0)))))
+  }else{
+    invisible(capture.output(suppressMessages(Q_fit <- BART::pbart(y.train = Y_fit, x.train = data.frame(X_src, Z=Z_src), ndpost=npost, nskip=nburn))))
+    invisible(capture.output(suppressMessages(Q1_init <- colMeans(predict(Q_fit, newdata_1)$prob.test))))
+    invisible(capture.output(suppressMessages(Q0_init <- colMeans(predict(Q_fit, newdata_0)$prob.test))))
+   }
+    
+  
+  
+  
   
   
   # Q(A,W) for the observed A
@@ -202,7 +214,7 @@ TMLE_generalizable_bart <- function(Y, X, Z, ps, X_pop, ps_pop,
   # Combine into a single clever covariate H = H1 - H0
   # This is often how the fluctuation is done: one model with H as the covariate
   H <- H1 + H0
-  
+  #if(binary) use_logit_link = T
   if(use_logit_link) {
     # Targeting step: logistic fluctuation
     # Logit link: We find epsilon by solving a logistic regression with offset.
@@ -246,9 +258,13 @@ TMLE_generalizable_bart <- function(Y, X, Z, ps, X_pop, ps_pop,
   newdata_1_pop <- data.frame(X_pop, Z=1)
   newdata_0_pop <- data.frame(X_pop, Z=0)
 
-  invisible(capture.output(suppressMessages(Q1_init_pop <- colMeans(predict(Q_fit, newdata_1_pop)))))
-  invisible(capture.output(suppressMessages(Q0_init_pop <- colMeans(predict(Q_fit, newdata_0_pop)))))
-  
+  if(!binary){
+    invisible(capture.output(suppressMessages(Q1_init_pop <- colMeans(predict(Q_fit, newdata_1_pop)))))
+    invisible(capture.output(suppressMessages(Q0_init_pop <- colMeans(predict(Q_fit, newdata_0_pop)))))
+  }else{
+    invisible(capture.output(suppressMessages(Q1_init_pop <- colMeans(predict(Q_fit, newdata_1_pop)$prob.test))))
+    invisible(capture.output(suppressMessages(Q0_init_pop <- colMeans(predict(Q_fit, newdata_0_pop)$prob.test))))
+  }
   
   if(use_logit_link) {
     # Update Q1 and Q0
