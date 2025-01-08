@@ -192,7 +192,7 @@ public:
     cbart->update(sigma, 50, 50, 1, false, 10L);
     cbart_pre = colMeans(cbart->predict(X_Z));
     cbart_pop = colMeans(cbart->predict(X_test));
-    cbart_pre_mean = 0;//mean(cbart_pop);
+    cbart_pre_mean = mean(cbart_pop);
     cbart_pop = cbart_pop - cbart_pre_mean;
     cbart_pre = cbart_pre - cbart_pre_mean;
  
@@ -217,7 +217,7 @@ public:
     cbart->update(sigma, 1, 1, 1, false, 10L);
     cbart_pre = colMeans(cbart->predict(X_Z));
     cbart_pop = colMeans(cbart->predict(X_test));
-    cbart_pre_mean = 0;//mean(cbart_pop);
+    cbart_pre_mean = mean(cbart_pop);
     cbart_pop = cbart_pop - cbart_pre_mean;
     cbart_pre = cbart_pre - cbart_pre_mean;
     cbart_train = sum(cbart_pre);
@@ -264,7 +264,7 @@ public:
         outcome_0[i] = outcome_0[i] + R::rnorm(0, sigma);
       }
     }
-    return List::create(Named("outcome_1") = outcome_1, Named("outcome_0") = outcome_0, Named("predict_s") = predict_s);
+    return List::create(Named("outcome_1") = outcome_1, Named("outcome_0") = outcome_0, Named("predict_s") = predict_s, Named("cbart_pop") = cbart_pop);
   };
   
   List get_posterior() override{
