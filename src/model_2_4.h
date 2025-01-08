@@ -249,8 +249,9 @@ public:
   List predict(NumericVector pi_test) override{
     long N = X_test.nrow();
     NumericMatrix pi_test_Z = NumericMatrix(N, 1, pi_test.begin());
+    NumericVector predict_s = colMeans(cbart_pi->predict(pi_test_Z));
     NumericVector outcome_0 = colMeans(main_bart->predict(cbind(X_test, pi_test)));
-    NumericVector outcome_1 = outcome_0 + cbart_pop + colMeans(cbart_pi->predict(pi_test_Z));
+    NumericVector outcome_1 = outcome_0 + cbart_pop + predict_s;
     if(this->binary){
       for(int i = 0; i < N; ++i){
         outcome_1[i] = R::rbinom(1, R::pnorm(outcome_1[i], 0, 1, true, false));
@@ -262,7 +263,7 @@ public:
         outcome_0[i] = outcome_0[i] + R::rnorm(0, sigma);
       }
     }
-    return List::create(Named("outcome_1") = outcome_1, Named("outcome_0") = outcome_0);
+    return List::create(Named("outcome_1") = outcome_1, Named("outcome_0") = outcome_0, Named("predict_s") = predict_s, Named("cbart_pop") = cbart_pop);
   };
   
   List get_posterior() override{
