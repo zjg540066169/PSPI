@@ -80,6 +80,8 @@ public:
     ns_part_outcome = ns_basis * ns_coefficient;
     ns_outcome = lr_outcome + ns_part_outcome;
     
+    //Rcout << lr_coefficient.t() << " " << ns_coefficient.t() << std::endl;
+    
     gamma = sqrt(rinvgamma((K-1.0) / 2.0, 1 / eta + 0.5 * arma::dot(ns_coefficient, ns_coefficient)));
     eta = rinvgamma(0.5, 1.0 + 1.0 / (gamma * gamma));
   }

@@ -37,8 +37,8 @@ apiw_bart = function(Y, X, Z, ps, X_pop, ps_pop, normalize = F, binary = F, nbur
                                                                                  x.train = X[Z == 1, ], ndpost=npost, nskip=nburn))))
     invisible(capture.output(suppressMessages(outcome_model_control <- BART::wbart(y.train = Y[Z == 0],
                                                                                    x.train = X[Z == 0, ], ndpost=npost, nskip=nburn))))
-    invisible(capture.output(suppressMessages(pred_treat <- predict(outcome_model_treat, X_pop))))
-    invisible(capture.output(suppressMessages(pred_control <- predict(outcome_model_control, X_pop))))
+    invisible(capture.output(suppressMessages(pred_treat <- (predict(outcome_model_treat, X_pop)))))
+    invisible(capture.output(suppressMessages(pred_control <- (predict(outcome_model_control, X_pop)))))
   }else{
     invisible(capture.output(suppressMessages(outcome_model_treat <- BART::pbart(y.train = Y[Z == 1],
                                                                                  x.train = X[Z == 1, ], ndpost=npost, nskip=nburn))))
@@ -49,18 +49,79 @@ apiw_bart = function(Y, X, Z, ps, X_pop, ps_pop, normalize = F, binary = F, nbur
   }
   
   
+  # data = tibble(
+  #   S = s,
+  #   A = ifelse(s == 1, Z, NA),
+  #   Y = ifelse(s == 1, Y, NA),
+  #   g1 = pred_treat,
+  #   g0 = pred_control,
+  #   e_ps = ps_pop
+  # )
+  # 
+  # Pr_A1 <- mean(data$A, na.rm = TRUE)
+  # Pr_A0 <- 1 - Pr_A1
+  # 
+  # data$W1_original <- with(data, ifelse(S == 1 & A == 1, S * A / (e_ps * Pr_A1), 0))
+  # data$W0_original <- with(data, ifelse(S == 1 & A == 0, S * (1 - A) / (e_ps * Pr_A0), 0))
+  # 
+  # # Calculate the sum of original weights
+  # sum_W1_original <- sum(data$W1_original, na.rm = TRUE)
+  # sum_W0_original <- sum(data$W0_original, na.rm = TRUE)
+  # 
+  # N <- nrow(data)  # Total population size
+  # 
+  # data$W1_scaled <- with(data, ifelse(S == 1 & A == 1, W1_original * N / sum_W1_original, 0))
+  # data$W0_scaled <- with(data, ifelse(S == 1 & A == 0, W0_original * N / sum_W0_original, 0))
+  # 
+  # # Define residuals for treated and control groups
+  # data$T1 <- with(data, ifelse(S == 1 & A == 1, Y - g1, 0))
+  # data$T0 <- with(data, ifelse(S == 1 & A == 0, Y - g0, 0))
+  # 
+  # # Survey design for the treated group
+  # design_treated <- survey::svydesign(ids = ~1, data = data, weights = ~W1_scaled)
+  # 
+  # # Survey design for the control group
+  # design_control <- survey::svydesign(ids = ~1, data = data, weights = ~W0_scaled)
   
   
   
   if(normalize == FALSE){
     weights1 <- 1 / (ps * mean(Z)) / length(ps_pop)
     weights0 <- 1 / (ps * (1 - mean(Z))) / length(ps_pop)
+    
+    
+    # IF1 = ifelse(s == 1, Z *  weights1 * (Y - pred_treat[s == 1]) + pred_treat[s == 1],  pred_treat[s == 0]) 
+    # IF0 = ifelse(s == 0, Z *  weights0 * (Y - pred_control[s == 1]) + pred_control[s == 1],  pred_control[s == 0]) 
+    # ATE = mean(IF1 - IF0)
+    # 
+    # weights1 = ifelse(s == 1, 1 / (ps_pop * mean(Z)) / length(ps_pop), 0)
+    # weights0 = ifelse(s == 1, 1 / (ps_pop * (1 - mean(Z))) / length(ps_pop), 0)
+    # 
+    # apply(pred_treat, 2, var) * length(ps_pop) *  weights1 + apply(pred_control, 2, var) *  length(ps_pop) * weights0 + (colMeans(pred_treat) - colMeans(pred_control) - ATE)^2
+    # 
+    
+    
+    
+    # 
+    # IF1 = ifelse(s == 1, Z *  weights1 * (Y - pred_treat[s == 1]) + pred_treat[s == 1],  pred_treat[s == 0]) 
+    # IF0 = ifelse(s == 0, Z *  weights0 * (Y - pred_control[s == 1]) + pred_control[s == 1],  pred_control[s == 0]) 
+    # ATE = mean(IF1 - IF0)
+    # IF1 = IF1 - mean(IF1)
+    # IF0 = IF0 - mean(IF0)
+    # IF = IF1 - IF0
+    # variance = sum(IF^2) / length(IF)^2 * sum(s == 0) / (length(s) - 1)
+    # variance0 = sum(IF0^2) / length(IF0)^2 * sum(s == 0) / (length(s) - 1)
+    # variance1 = sum(IF1^2) / length(IF1)^2 * sum(s == 0) / (length(s) - 1)
+    
+    
   }else{
     weights1 <- 1 / (ps * mean(Z))
     weights0 <- 1 / (ps * (1 - mean(Z)))
+    
     weights1 = weights1 / sum(weights1)
     weights0 = weights0 / sum(weights0)
   }
+  
   if(binary == F){
     invisible(capture.output(suppressMessages(pred_treat_group1 <- predict(outcome_model_treat, X))))
     invisible(capture.output(suppressMessages(pred_treat_group0 <- predict(outcome_model_control, X))))

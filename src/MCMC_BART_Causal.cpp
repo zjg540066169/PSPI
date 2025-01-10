@@ -230,7 +230,7 @@ List MCMC_BART_Causal(NumericMatrix X, NumericVector Y, NumericVector Z, Numeric
        if(model == 4 || model == 5){
          post_cbart_train[i - nburn] = posterior["cbart_train"];
        }
-       if(model == 5){
+       if(model == 4 || model == 5){
          predict_s(i - nburn, _) =  as<NumericVector>(predict_outcome["predict_s"]);
          cbart_pop(i - nburn, _) =  as<NumericVector>(predict_outcome["cbart_pop"]);
        }
@@ -239,4 +239,5 @@ List MCMC_BART_Causal(NumericMatrix X, NumericVector Y, NumericVector Z, Numeric
     }
   }
   return List::create(Named("post_Z_cbart") = post_Z_cbart,Named("post_cbart_train") = post_cbart_train, Named("post_outcome1") = post_outcome1, Named("post_outcome0") = post_outcome0, Named("post_te") = post_te, Named("post_sigma") = post_sigma, Named("post_Y_star") = post_Y_star, Named("predict_s") = predict_s, Named("cbart_pop") = cbart_pop);
+  //return List::create(Named("post_outcome1") = post_outcome1, Named("post_outcome0") = post_outcome0, Named("post_te") = post_te);
 }
