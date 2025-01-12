@@ -4,5 +4,6 @@
 .Ruserdata
 *.csv
 /simulation_dec/*
-/R/*/
+/R/
 *.txt
+PSPI.Rproj
