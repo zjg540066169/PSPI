@@ -48,6 +48,13 @@ apiw_bart = function(Y, X, Z, ps, X_pop, ps_pop, normalize = F, binary = F, nbur
     invisible(capture.output(suppressMessages(pred_control <- predict(outcome_model_control, X_pop)$prob.test)))
   }
   
+  if(binary == F){
+    invisible(capture.output(suppressMessages(pred_treat_group1 <- predict(outcome_model_treat, X))))
+    invisible(capture.output(suppressMessages(pred_treat_group0 <- predict(outcome_model_control, X))))
+  }else{
+    invisible(capture.output(suppressMessages(pred_treat_group1 <- predict(outcome_model_treat, X)$prob.test)))
+    invisible(capture.output(suppressMessages(pred_treat_group0 <- predict(outcome_model_control, X)$prob.test)))
+  }
   
   # data = tibble(
   #   S = s,
@@ -122,24 +129,48 @@ apiw_bart = function(Y, X, Z, ps, X_pop, ps_pop, normalize = F, binary = F, nbur
     weights0 = weights0 / sum(weights0)
   }
   
-  if(binary == F){
-    invisible(capture.output(suppressMessages(pred_treat_group1 <- predict(outcome_model_treat, X))))
-    invisible(capture.output(suppressMessages(pred_treat_group0 <- predict(outcome_model_control, X))))
-  }else{
-    invisible(capture.output(suppressMessages(pred_treat_group1 <- predict(outcome_model_treat, X)$prob.test)))
-    invisible(capture.output(suppressMessages(pred_treat_group0 <- predict(outcome_model_control, X)$prob.test)))
-  }
-  outcome1 = sapply(1:npost, function(i){
+
+  outcome1 = t(sapply(1:npost, function(i){
     outcome1 <- mean(pred_treat[i,]) + sum(weights1[Z == 1] * (Y[Z == 1] -  pred_treat_group1[i, Z == 1]))
-    return(outcome1)
-  })
+    des <- survey::svydesign(ids = ~1, weights = ~weight, data = data.frame(weight = weights1[Z == 1], outcome = Y[Z == 1] -  pred_treat_group1[i, Z == 1]))
+    SE = unname(survey::SE(survey::svymean(~outcome, des)))
+    return(c(outcome1, SE))
+  }))
   
-  outcome0 = sapply(1:npost, function(i){
+  outcome0 = t(sapply(1:npost, function(i){
     outcome0 <- mean(pred_control[i,]) + sum(weights0[Z == 0] * (Y[Z == 0] -  pred_treat_group0[i, Z == 0]))
-    return(outcome0)
-  })
+    des <- survey::svydesign(ids = ~1, weights = ~weight, data = data.frame(weight = weights0[Z == 0], outcome = Y[Z == 0] -  pred_treat_group0[i, Z == 0]))
+    SE = unname(survey::SE(survey::svymean(~outcome, des)))
+    return(c(outcome0, SE))
+  }))
+  
+  se1 = sqrt(mean(outcome1[,2]^2) + var(outcome1[,1]) * (1 + 1 / dim(outcome1)[1]))
+  se0 = sqrt(mean(outcome0[,2]^2) + var(outcome0[,1]) * (1 + 1 / dim(outcome0)[1]))
+  
+  se = sqrt(mean((sapply(1:npost, function(i){
+    des <- survey::svydesign(ids = ~1, weights = ~weight, data = data.frame(weight = ifelse(Z == 0, weights0, weights1), Z = Z, outcome = ifelse(Z == 0, Y -  pred_treat_group0[i, ],  Y -  pred_treat_group1[i, ]) ))
+
+    ttest_result = survey::svyttest(outcome~I(Z == 1), des)
+    diff_means <- ttest_result$estimate
+    t_value <- ttest_result$statistic
+    return(unname(abs(diff_means / t_value)))
+  }))^2) + var(outcome1[,1] + outcome0[,1]) * (1 + 1 / dim(outcome1)[1]))
   
   
+  
+  
+  
+
+  
+  
+  return(list(
+    outcome1 = mean(outcome1[,1]),
+    outcome0 = mean(outcome0[,1]),
+    ATE = mean(outcome1[,1] - outcome0[,1]),
+    se = se,
+    se1 = se1,
+    se0 = se0)
+  )
   
   
   # 
@@ -210,11 +241,7 @@ apiw_bart = function(Y, X, Z, ps, X_pop, ps_pop, normalize = F, binary = F, nbur
   # c(quantile(outcome1 - outcome0, 0.025), quantile(outcome1 - outcome0, 0.975))
   
   
-  return(list(
-    outcome1 = outcome1,
-    outcome0 = outcome0,
-    ATE = outcome1 - outcome0)
-  )
+  
 }
 
 
