@@ -26,23 +26,26 @@ class NS_basis{
 public:
   NS_basis(){};
   
-  NS_basis(NumericVector x, long K){
+  NS_basis(NumericVector x, long K, int order = 3){
     this->K = K;
     this->n = x.length();
+    this->order = order;
     boundary_knots.push_back(min(x));
     boundary_knots.push_back(max(x));
     knots = cpp_quantile_seq(x, K);
-    internal_knots = knots[Range(1, K - 2)];
+    if(K > 2)
+      internal_knots = knots[Range(1, K - 2)];
     
     basis = NumericMatrix(n, K);
     for(int i = 0 ; i < n; ++i){
       basis(i, 0) = 1;
       basis(i, 1) = x[i];
       for(int j = 0 ; j < K - 2; ++j){
-        basis(i, j + 2) = ((pow(std::max(x[i] - knots[j], 0.0), 3) - pow(std::max(x[i] - knots[K - 1], 0.0), 3)) / (knots[K - 1] - knots[j]) - (pow(std::max(x[i] - knots[K - 2], 0.0), 3) - pow(std::max(x[i] - knots[K - 1], 0.0), 3)) / (knots[K - 1] - knots[K - 2]));
+        basis(i, j + 2) = ((pow(std::max(x[i] - knots[j], 0.0), order) - pow(std::max(x[i] - knots[K - 1], 0.0), order)) / (knots[K - 1] - knots[j]) - (pow(std::max(x[i] - knots[K - 2], 0.0), order) - pow(std::max(x[i] - knots[K - 1], 0.0), order)) / (knots[K - 1] - knots[K - 2]));
       }
     }
-    ns_part = basis(_ , Range(2, K-1));
+    if(K > 2)
+      ns_part = basis(_ , Range(2, K-1));
     
   };
   
@@ -66,13 +69,15 @@ public:
     return knots;
   }
   
+
+  
   NumericMatrix predict(NumericVector x){
     NumericMatrix basis_predict = NumericMatrix(x.length(), K);
     for(int i = 0 ; i < x.length(); ++i){
       basis_predict(i, 0) = 1;
       basis_predict(i, 1) = x[i];
       for(int j = 0 ; j < K - 2; ++j){
-        basis_predict(i, j + 2) = (pow(std::max(x[i] - knots[j], 0.0), 3) - pow(std::max(x[i] - knots[K - 1], 0.0), 3)) / (knots[K - 1] - knots[j]) - (pow(std::max(x[i] - knots[K - 2], 0.0), 3) - pow(std::max(x[i] - knots[K - 1], 0.0), 3)) / (knots[K - 1] - knots[K - 2]);
+        basis_predict(i, j + 2) = (pow(std::max(x[i] - knots[j], 0.0), order) - pow(std::max(x[i] - knots[K - 1], 0.0), order)) / (knots[K - 1] - knots[j]) - (pow(std::max(x[i] - knots[K - 2], 0.0), order) - pow(std::max(x[i] - knots[K - 1], 0.0), order)) / (knots[K - 1] - knots[K - 2]);
       }
     }
     return basis_predict;
@@ -82,7 +87,7 @@ public:
     NumericMatrix basis_predict = NumericMatrix(x.length(), K - 2);
     for(int i = 0 ; i < x.length(); ++i){
       for(int j = 0 ; j < K - 2; ++j){
-        basis_predict(i, j) = (pow(std::max(x[i] - knots[j], 0.0), 3) - pow(std::max(x[i] - knots[K - 1], 0.0), 3)) / (knots[K - 1] - knots[j]) - (pow(std::max(x[i] - knots[K - 2], 0.0), 3) - pow(std::max(x[i] - knots[K - 1], 0.0), 3)) / (knots[K - 1] - knots[K - 2]);
+        basis_predict(i, j) = (pow(std::max(x[i] - knots[j], 0.0), order) - pow(std::max(x[i] - knots[K - 1], 0.0), order)) / (knots[K - 1] - knots[j]) - (pow(std::max(x[i] - knots[K - 2], 0.0), order) - pow(std::max(x[i] - knots[K - 1], 0.0), order)) / (knots[K - 1] - knots[K - 2]);
       }
     }
     return basis_predict;
@@ -149,6 +154,7 @@ public:
   
   
   
+  
 private:
   NumericVector boundary_knots;
   NumericVector internal_knots;
@@ -156,6 +162,8 @@ private:
   
   long K;
   long n;
+  
+  int order;
   
   NumericMatrix ns_part;
   NumericMatrix basis;

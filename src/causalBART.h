@@ -219,10 +219,15 @@ public:
     NumericVector Z_0 (N, 0);
     NumericVector outcome_0 = colMeans(main_bart->predict(cbind(X_test, pi_test)));
     NumericVector outcome_1 = outcome_0 + colMeans(cbart->predict(X_test));
+    NumericVector outcome_0_hidden(N);
+    NumericVector outcome_1_hidden(N);
     if(this->binary){
       for(int i = 0; i < N; ++i){
-        outcome_1[i] = R::rbinom(1, R::pnorm(outcome_1[i], 0, 1, true, false));
-        outcome_0[i] = R::rbinom(1, R::pnorm(outcome_0[i], 0, 1, true, false));
+        outcome_1_hidden[i] = outcome_1[i];
+        outcome_0_hidden[i] = outcome_0[i];
+        
+        outcome_1[i] = R::rbinom(1, R::pnorm(outcome_1_hidden[i], 0, 1, true, false));
+        outcome_0[i] = R::rbinom(1, R::pnorm(outcome_0_hidden[i], 0, 1, true, false));
       }
     }else{
       for(int i = 0; i < N; ++i){
@@ -230,7 +235,7 @@ public:
         outcome_0[i] = outcome_0[i] + R::rnorm(0, sigma);
       }
     }
-    return List::create(Named("outcome_1") = outcome_1, Named("outcome_0") = outcome_0);
+    return List::create(Named("outcome_1") = outcome_1, Named("outcome_0") = outcome_0, Named("outcome_1_hidden") = outcome_1_hidden, Named("outcome_0_hidden") = outcome_0_hidden);
   };
   
   List get_posterior() override{

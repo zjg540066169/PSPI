@@ -31,42 +31,73 @@ class NS{
 public:
   NS(){};
   
-  NS(NumericVector X, NumericVector y, long K, double sigma, int order = 3){
+  NS(NumericVector X, NumericVector y, long K, double sigma, double alpha_0 = 1, double beta_0 = 1, int order = 1){
     this->X = X;
     this->y = as<arma::vec>(y);
     this->K = K;
     this->n = X.length();
     this->sigma = sigma;
+    this->alpha_0 = alpha_0;
+    this->beta_0 = beta_0;
+    this->order = order;
     
-    basis = new NS_basis(X, K, order);
+    basis = new NS_basis(X, K);
     complete_basis = as<arma::mat>(basis->get_basis());
-    if(K > 2)
-      ns_basis = as<arma::mat>(basis->get_ns_part());
+    ns_basis = as<arma::mat>(basis->get_ns_part());
     lr_basis = complete_basis.cols(0, 1);
     arma::vec theta_init = update_beta_mean(complete_basis, this->y);
-  
-    lr_coefficient = theta_init.subvec(0, 1);
     
-    if(K > 2){
-      ns_coefficient = theta_init.subvec(2, K - 1);
+    
+    
+    lr_coefficient = theta_init.subvec(0, 1);
+    ns_coefficient = theta_init.subvec(2, K - 1);
+
+    gamma = sqrt(rinvgamma(alpha_0, beta_0));
+    // eta = rinvgamma(0.5, 1 / pow(A_gamma , 2));
+    // gamma = sqrt(rinvgamma(0.5, 1 / eta));
+    
+    if(order == 0){
+      P = arma::eye<arma::mat>(K - 2, K - 2);
+    }else if(order == 1){
+      P = RW1(K - 2);
+    }else{
+      P = RW2(K - 2);
     }
+    
+    update_outcome();
   };
-  
-  virtual void update() = 0;
-  virtual void update(double sigma)= 0;
   
   void set_Y(NumericVector y){
     this->y = as<arma::vec>(y);
   }
   
+  void update(double sigma){
+    this->sigma = sigma;
+    lr_coefficient = update_beta(lr_basis, this->y - ns_part_outcome, this->sigma);
+    lr_outcome = lr_basis * lr_coefficient;
+    
+   
+    arma::mat theta_var = arma::inv_sympd(1 / pow(gamma, 2) * P.t() * P + 1 / pow(this->sigma, 2) * ns_basis.t() * ns_basis);
+    arma::vec theta_mean = arma::inv_sympd(pow(this->sigma, 2) / pow(gamma, 2) * P.t() * P + ns_basis.t() * ns_basis) * ns_basis.t() * (this->y - lr_outcome);
+    ns_coefficient = arma::vectorise(rmvnorm(1, theta_mean, theta_var));
+  
+    
+    ns_part_outcome = ns_basis * ns_coefficient;
+    ns_outcome = lr_outcome + ns_part_outcome;
+    
+    Rcout << lr_coefficient.t() << " " << ns_coefficient.t() << std::endl;
+    
+    gamma = sqrt(rinvgamma(alpha_0 + (K-2.0 - order) / 2.0, beta_0 + 0.5 * arma::dot(P * ns_coefficient, P * ns_coefficient)));
+    //gamma = sqrt(rinvgamma((K-1.0-order) / 2.0, 1 / eta + 0.5 * arma::dot(P * ns_coefficient, P * ns_coefficient)));
+
+    //eta = rinvgamma(0.5, (1.0/(A_gamma*A_gamma)) + 1.0 / (gamma * gamma));
+  }
+  
   NumericVector predict(NumericVector X_test){
     complete_basis_test = as<arma::mat>(basis->predict(X_test));
-    if(K > 2)
-      ns_basis_test = complete_basis_test.cols(2, K-1);
+    ns_basis_test = complete_basis_test.cols(2, K-1);
     lr_basis_test = complete_basis_test.cols(0, 1);
-    arma::vec ns_outcome_test = lr_basis_test * lr_coefficient;
-    if(K > 2)  
-      ns_outcome_test = ns_outcome_test + ns_basis_test * ns_coefficient;
+    arma::vec ns_outcome_test = lr_basis_test * lr_coefficient + ns_basis_test * ns_coefficient;
     return wrap(ns_outcome_test);
   }
   
@@ -102,12 +133,13 @@ public:
     return wrap(arma::join_cols(lr_coefficient, ns_coefficient));
   }
   
-  NumericVector get_ns_outcome(){
-    return wrap(ns_outcome);
-  }
   
   double get_gamma(){
     return gamma;
+  }
+  
+  NumericVector get_ns_outcome(){
+    return wrap(ns_outcome);
   }
   
   arma::mat inv_X_T_X(arma::mat mat_X){
@@ -126,12 +158,8 @@ public:
   
   void update_outcome(){
     lr_outcome = lr_basis * lr_coefficient;
-    ns_outcome = lr_outcome;
-    if(K > 2){
-      ns_part_outcome = ns_basis * ns_coefficient;
-      ns_outcome = ns_outcome + ns_part_outcome;
-    }
-    //Rcout << ns_outcome << std::endl;
+    ns_part_outcome = ns_basis * ns_coefficient;
+    ns_outcome = lr_outcome + ns_part_outcome;
   }
   
   double rinvgamma(double a, double b){
@@ -139,18 +167,43 @@ public:
     return 1 / s;
   }
   
-protected:
+  arma::mat RW1(int K) {
+    arma::mat D1 = arma::zeros(K-1, K);  // RW1 is (K-1) x K
+    for (int i = 0; i < K-1; i++) {
+      D1(i, i) = -1;
+      D1(i, i+1) = 1;
+    }
+    return D1;
+  }
+  
+  arma::mat RW2(int K) {
+    arma::mat D2 = arma::zeros(K-2, K);  // RW2 is (K-2) x K
+    for (int i = 0; i < K-2; i++) {
+      D2(i, i) = 1;
+      D2(i, i+1) = -2;
+      D2(i, i+2) = 1;
+    }
+    return D2;
+  }
+  
+private:
   NS_basis * basis;
   
   long K;
   long n;
   double sigma;
-  double gamma;
+  double A_gamma;
   
   
   arma::vec lr_coefficient;
   arma::vec ns_coefficient;
-  
+  double gamma;
+  double eta;
+
+  double alpha_0;
+  double beta_0;
+
+  arma::mat P;
   
   NumericVector X;
   arma::vec y;
@@ -166,6 +219,8 @@ protected:
   arma::vec ns_outcome;
   arma::vec lr_outcome;
   arma::vec ns_part_outcome;
+  
+  int order;
   
 };
 

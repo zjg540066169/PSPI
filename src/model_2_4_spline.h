@@ -22,8 +22,16 @@
 
 #ifndef NS_H_
 #define NS_H_
-#include "NS.h"
+#include "NS_ridge.h"
 #endif
+
+
+#ifndef NSC_H_
+#define NSC_H_
+#include "NS_hcauchy.h"
+#endif
+
+
 
 
 #ifndef RCPPDIST_H_
@@ -177,16 +185,25 @@ public:
       sigma = main_bart->get_sigma();
     else
       sigma = 1;
+    
+    //Rcout << sigma << std::endl;
     bart_pre = colMeans(main_bart->predict(cbind(this->X, this->pi)));
     
     Z_1 = (Z == 1.0);
     X_Z = sliceRows(X, Z_1);
     Y_Z = Y[Z_1] - bart_pre[Z_1];
-    
+    int n_knots;
+    if(!this->binary)
+      ns = new NS_R(as<NumericVector>(pi[Z_1]), Y_Z, std::round(pow(sum(Z_1), 1.0/3.0)) + 2, sigma, 3);
+    else
+      ns = new NS_HC(as<NumericVector>(pi[Z_1]), Y_Z, std::round(pow(sum(Z_1), 1.0/3.0)) + 2, sigma, 1, true);
+    //ns = new NS(as<NumericVector>(pi[Z_1]), Y_Z, std::min(10, (int)(Z_1.length() / 10)), sigma);
 
-    ns = new NS(as<NumericVector>(pi[Z_1]), Y_Z, std::min(10, (int)(Z_1.length() / 4)), sigma);
+    //Rcout << "before ns" << std::endl;
     ns->update(sigma);
+    //Rcout << "after ns sigma" << std::endl;
     clm_pi_pre = ns->get_ns_outcome();
+    //Rcout << "after ns" << std::endl;
     
     cbart = new bart_model(X_Z, Y_Z - clm_pi_pre, 100L, false, false, false, ntrees_s);
     cbart->update(sigma, 50, 50, 1, false, 10L);
@@ -198,6 +215,11 @@ public:
  
     Z_cbart = NumericVector(Y.length());
     this->update_Z_cbart();
+    if(!this->binary){
+      double rss = sum(pow(Y - Z_cbart - bart_pre, 2));
+      sigma = main_bart->get_invchi(n, rss);
+    }
+    
   };
   
   void update_Z_cbart(){
@@ -236,6 +258,8 @@ public:
       if (verbose)
         Rcout << rss << "  " << sigma << std::endl;
     }else{
+      if (verbose)
+        Rcout << sigma << std::endl;
       for(int i = 0; i < n; ++i){
         if(Y[i] < 0){
           NumericVector mean_y = rtruncnorm(1, bart_pre[i] + Z_cbart[i], sigma, R_NegInf, 0);
@@ -253,10 +277,16 @@ public:
     NumericVector predict_s = ns->predict(pi_test);
     NumericVector outcome_0 = colMeans(main_bart->predict(cbind(X_test, pi_test)));
     NumericVector outcome_1 = outcome_0 + cbart_pop + predict_s;
+    
+    NumericVector outcome_0_hidden(N);
+    NumericVector outcome_1_hidden(N);
     if(this->binary){
       for(int i = 0; i < N; ++i){
-        outcome_1[i] = R::rbinom(1, R::pnorm(outcome_1[i], 0, 1, true, false));
-        outcome_0[i] = R::rbinom(1, R::pnorm(outcome_0[i], 0, 1, true, false));
+        outcome_1_hidden[i] = outcome_1[i];
+        outcome_0_hidden[i] = outcome_0[i];
+        
+        outcome_1[i] = R::rbinom(1, R::pnorm(outcome_1_hidden[i], 0, 1, true, false));
+        outcome_0[i] = R::rbinom(1, R::pnorm(outcome_0_hidden[i], 0, 1, true, false));
       }
     }else{
       for(int i = 0; i < N; ++i){
@@ -264,7 +294,7 @@ public:
         outcome_0[i] = outcome_0[i] + R::rnorm(0, sigma);
       }
     }
-    return List::create(Named("outcome_1") = outcome_1, Named("outcome_0") = outcome_0, Named("predict_s") = predict_s, Named("cbart_pop") = cbart_pop);
+    return List::create(Named("outcome_1") = outcome_1, Named("outcome_0") = outcome_0, Named("outcome_1_hidden") = outcome_1_hidden, Named("outcome_0_hidden") = outcome_0_hidden, Named("predict_s") = predict_s, Named("cbart_pop") = cbart_pop);
   };
   
   List get_posterior() override{
@@ -276,6 +306,8 @@ public:
       Named("clm_pi_pre") = clm_pi_pre,
       Named("cbart_pre_mean") = cbart_pre_mean,
       Named("Y_hat") = Y,
+      Named("ns_beta") = ns->get_theta(),
+      Named("gamma") = ns->get_gamma(),
       Named("cbart_train") = cbart_train
     );
   };

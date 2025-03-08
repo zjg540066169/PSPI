@@ -4,9 +4,9 @@
 // [[Rcpp::depends(RcppArmadillo)]]
 #endif
 
-#ifndef NS_BASIS_H_
-#define NS_BASIS_H_
-#include "NS_basis.h"
+#ifndef NS_H_
+#define NS_H_
+#include "NS_ridge.h"
 #endif
 
 #ifndef CBART_H_
@@ -181,9 +181,13 @@ public:
     bart_pop = bart_pop - bart_pre_mean;
     bart_pre = bart_pre - bart_pre_mean;
     
+    //Rcout << std::round(pow(Z.length(), 1.0/3.0)) << std::endl;
     
-    
-    main_bs = new NS(as<NumericVector>(pi), Y - bart_pre, std::min(10, (int)(Y_.length() / 4)), sigma);
+    //Rcout << std::round(pow(sum(Z_1), 1.0/3.0)) << std::endl;
+    if(!binary)
+      main_bs = new NS_R(as<NumericVector>(pi), Y - bart_pre, std::round(pow(Z.length(), 1.0/3.0)) + 2, sigma, 3);
+    else
+      main_bs = new NS_HC(as<NumericVector>(pi), Y - bart_pre, std::round(pow(Z.length(), 1.0/3.0)) + 2, sigma, 1, true);
     //main_bs = new NS(as<NumericVector>(pi[!Z_1]), as<NumericVector>((Y - bart_pre)[!Z_1]), std::min(10, (int)(Y_.length() / 4)), sigma);
     main_bs->update(sigma);
     main_pi_pre = main_bs->get_ns_outcome();
@@ -193,8 +197,10 @@ public:
     X_Z = sliceRows(X, Z_1);
     Y_Z = as<NumericVector>(Y[Z_1]) - as<NumericVector>(bart_pre[Z_1]) - as<NumericVector>(main_pi_pre[Z_1]);
     
-    
-    bs = new NS(as<NumericVector>(pi[Z_1]), Y_Z, std::min(10, (int)(Z_1.length() / 4)), sigma);
+    if(!binary)
+      bs = new NS_R(as<NumericVector>(pi[Z_1]), Y_Z, std::round(pow(sum(Z_1), 1.0/3.0)) + 2, sigma, 3);
+    else
+      bs = new NS_HC(as<NumericVector>(pi[Z_1]), Y_Z, std::round(pow(sum(Z_1), 1.0/3.0)) + 2, sigma, 1, true);
     bs->update(sigma);
     clm_pi_pre = bs->get_ns_outcome();
     
@@ -262,10 +268,10 @@ public:
     }else{
       for(int i = 0; i < n; ++i){
         if(Y[i] < 0){
-          NumericVector mean_y = rtruncnorm(1, bart_pre[i] + main_pi_pre[i] + Z_cbart[i], sigma, R_NegInf, 0);
+          NumericVector mean_y = rtruncnorm(1, bart_pre[i] + main_pi_pre[i] + Z_cbart[i], 1, R_NegInf, 0);
           Y[i] = mean_y[0];
         }else{
-          NumericVector mean_y = rtruncnorm(1, bart_pre[i] + main_pi_pre[i] + Z_cbart[i], sigma, 0, R_PosInf);
+          NumericVector mean_y = rtruncnorm(1, bart_pre[i] + main_pi_pre[i] + Z_cbart[i], 1, 0, R_PosInf);
           Y[i] = mean_y[0];
         }
       }
@@ -274,13 +280,19 @@ public:
   
   List predict(NumericVector pi_test) override{
     long N = X_test.nrow();
-  
-    NumericVector outcome_0 = bart_pop + main_bs->predict(pi_test);
-    NumericVector outcome_1 = outcome_0 + cbart_pop + bs->predict(pi_test);
+    NumericVector predict_s = bs->predict(pi_test);
+    NumericVector predict_h = main_bs->predict(pi_test);
+    NumericVector outcome_0 = bart_pop + predict_h;
+    NumericVector outcome_1 = outcome_0 + cbart_pop + predict_s;
+    NumericVector outcome_0_hidden(N);
+    NumericVector outcome_1_hidden(N);
     if(this->binary){
       for(int i = 0; i < N; ++i){
-        outcome_1[i] = R::rbinom(1, R::pnorm(outcome_1[i], 0, 1, true, false));
-        outcome_0[i] = R::rbinom(1, R::pnorm(outcome_0[i], 0, 1, true, false));
+        outcome_1_hidden[i] = outcome_1[i];
+        outcome_0_hidden[i] = outcome_0[i];
+        
+        outcome_1[i] = R::rbinom(1, R::pnorm(outcome_1_hidden[i], 0, 1, true, false));
+        outcome_0[i] = R::rbinom(1, R::pnorm(outcome_0_hidden[i], 0, 1, true, false));
       }
     }else{
       for(int i = 0; i < N; ++i){
@@ -288,7 +300,7 @@ public:
         outcome_0[i] = outcome_0[i] + R::rnorm(0, sigma);
       }
     }
-    return List::create(Named("outcome_1") = outcome_1, Named("outcome_0") = outcome_0);
+    return List::create(Named("outcome_1") = outcome_1, Named("outcome_0") = outcome_0, Named("outcome_1_hidden") = outcome_1_hidden, Named("outcome_0_hidden") = outcome_0_hidden, Named("predict_s") = predict_s, Named("cbart_pop") = cbart_pop, Named("predict_h") = predict_h);  
   };
   
   List get_posterior() override{
@@ -300,6 +312,9 @@ public:
       Named("clm_pi_pre") = clm_pi_pre,
       Named("cbart_pre_mean") = cbart_pre_mean,
       Named("Y_hat") = Y,
+      Named("ns_beta") = bs->get_theta(),
+      Named("ns_beta_main") = main_bs->get_theta(),
+      Named("gamma") = bs->get_gamma(),
       Named("cbart_train") = cbart_train
     );
   };
