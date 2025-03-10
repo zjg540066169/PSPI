@@ -162,7 +162,7 @@ bartModelMatrix=function(X, numcut=0L, usequants=FALSE, type=7,
 
 class model_2_5_spline: public BARTforCausal{
 public:
-  model_2_5_spline(NumericMatrix X_, NumericVector Y_, NumericVector Z_, NumericVector pi_, NumericMatrix X_test_, bool binary, long ntrees_s = 200) : BARTforCausal(X_, Y_, Z_, pi_, X_test_, binary, ntrees_s){
+  model_2_5_spline(NumericMatrix X_, NumericVector Y_, NumericVector Z_, NumericVector pi_, NumericMatrix X_test_, bool binary, bool logistic, long ntrees_s = 200) : BARTforCausal(X_, Y_, Z_, pi_, X_test_, binary, logistic, ntrees_s){
     Z_1 = (Z == 1.0);
     
     main_bart = new bart_model(X, Y, 100L, false, false, false, 200);
@@ -187,7 +187,7 @@ public:
     if(!binary)
       main_bs = new NS_R(as<NumericVector>(pi), Y - bart_pre, std::round(pow(Z.length(), 1.0/3.0)) + 2, sigma, 3);
     else
-      main_bs = new NS_HC(as<NumericVector>(pi), Y - bart_pre, std::round(pow(Z.length(), 1.0/3.0)) + 2, sigma, 1, true);
+      main_bs = new NS_HC(as<NumericVector>(pi), Y - bart_pre, std::round(pow(Z.length(), 1.0/3.0)) + 2, sigma, 3);
     //main_bs = new NS(as<NumericVector>(pi[!Z_1]), as<NumericVector>((Y - bart_pre)[!Z_1]), std::min(10, (int)(Y_.length() / 4)), sigma);
     main_bs->update(sigma);
     main_pi_pre = main_bs->get_ns_outcome();
@@ -200,7 +200,7 @@ public:
     if(!binary)
       bs = new NS_R(as<NumericVector>(pi[Z_1]), Y_Z, std::round(pow(sum(Z_1), 1.0/3.0)) + 2, sigma, 3);
     else
-      bs = new NS_HC(as<NumericVector>(pi[Z_1]), Y_Z, std::round(pow(sum(Z_1), 1.0/3.0)) + 2, sigma, 1, true);
+      bs = new NS_HC(as<NumericVector>(pi[Z_1]), Y_Z, std::round(pow(sum(Z_1), 1.0/3.0)) + 2, sigma, 3);
     bs->update(sigma);
     clm_pi_pre = bs->get_ns_outcome();
     
@@ -216,6 +216,20 @@ public:
     
     Z_cbart = NumericVector(Y.length());
     this->update_Z_cbart();
+    
+    if(this->logistic){
+      for(int i = 0; i < Y.length(); ++i){
+        if(Y_[i] == 0.0){
+          NumericVector mean_y = rtruncnorm(1, bart_pre[i] + main_pi_pre[i] + Z_cbart[i], w[i], R_NegInf, 0);
+          Y[i] = mean_y[0];
+        }else{
+          NumericVector mean_y = rtruncnorm(1, bart_pre[i] + main_pi_pre[i] + Z_cbart[i], w[i], 0, R_PosInf);
+          Y[i] = mean_y[0];
+        }
+        lambda[i]= draw_lambda_i(lambda[i], (Y_[i] * 2 - 1) * (bart_pre[i] + main_pi_pre[i] + Z_cbart[i]), 1000, 1, gen);
+        w[i] = sqrt(lambda[i]);
+      }
+    }
   };
   
   void update_Z_cbart(){
@@ -225,9 +239,9 @@ public:
   
   void update(bool verbose = false) override{
     main_bart->set_data(X, Y - Z_cbart - main_pi_pre);
-    main_bart->update(sigma, 1, 1, 1, false, 10L);
+    List main_train_result = main_bart->update(sigma, w, 1, 1, 1, false, 10L);
+    bart_pre = as<NumericVector>(main_train_result["yhat.train.mean"]);
     
-    bart_pre = colMeans(main_bart->predict(this->X));
     bart_pop = colMeans(main_bart->predict(X_test));
     bart_pre_mean = mean(bart_pop);
     
@@ -236,16 +250,17 @@ public:
     
     
     main_bs->set_Y(Y - Z_cbart - bart_pre);
-    main_bs->update(sigma);
+    main_bs->update(sigma * w);
     main_pi_pre = main_bs->get_ns_outcome();
     
     
     Y_Z = as<NumericVector>(Y[Z_1]) - as<NumericVector>(bart_pre[Z_1]) - as<NumericVector>(main_pi_pre[Z_1]);
     NumericVector Y_Cb = Y_Z - clm_pi_pre;
+    NumericVector w_Z = w[Z_1];
     
     cbart->set_data(X_Z, Y_Z - clm_pi_pre);
-    cbart->update(sigma, 1, 1, 1, false, 10L);
-    cbart_pre = colMeans(cbart->predict(X_Z));
+    List cbart_train_result = cbart->update(sigma, w_Z, 1, 1, 1, false, 10L);
+    cbart_pre = as<NumericVector>(cbart_train_result["yhat.train.mean"]);
     cbart_pop = colMeans(cbart->predict(X_test));
     cbart_pre_mean = mean(cbart_pop);
     cbart_pop = cbart_pop - cbart_pre_mean;
@@ -256,7 +271,7 @@ public:
     NumericVector y_te = Y_Z - cbart_pre;
     
     bs->set_Y(y_te);
-    bs->update(sigma);
+    bs->update(sigma * w_Z);
     clm_pi_pre = bs->get_ns_outcome();
     
     this->update_Z_cbart();
@@ -266,13 +281,28 @@ public:
       if (verbose)
         Rcout << rss << "  " << sigma << "   " << main_bart->get_sigma() << std::endl;
     }else{
-      for(int i = 0; i < n; ++i){
-        if(Y[i] < 0){
-          NumericVector mean_y = rtruncnorm(1, bart_pre[i] + main_pi_pre[i] + Z_cbart[i], 1, R_NegInf, 0);
-          Y[i] = mean_y[0];
-        }else{
-          NumericVector mean_y = rtruncnorm(1, bart_pre[i] + main_pi_pre[i] + Z_cbart[i], 1, 0, R_PosInf);
-          Y[i] = mean_y[0];
+      
+      if(this->logistic){
+        for(int i = 0; i < Y.length(); ++i){
+          if(Y_[i] == 0.0){
+            NumericVector mean_y = rtruncnorm(1, bart_pre[i] + main_pi_pre[i] + Z_cbart[i], w[i], R_NegInf, 0);
+            Y[i] = mean_y[0];
+          }else{
+            NumericVector mean_y = rtruncnorm(1, bart_pre[i] + main_pi_pre[i] + Z_cbart[i], w[i], 0, R_PosInf);
+            Y[i] = mean_y[0];
+          }
+          lambda[i]=draw_lambda_i(lambda[i], (Y_[i] * 2 - 1) * (bart_pre[i] + main_pi_pre[i] + Z_cbart[i]), 1000, 1, gen);
+          w[i] = sqrt(lambda[i]);
+        }
+      }else{
+        for(int i = 0; i < n; ++i){
+          if(Y[i] < 0){
+            NumericVector mean_y = rtruncnorm(1, bart_pre[i] + main_pi_pre[i] + Z_cbart[i], 1, R_NegInf, 0);
+            Y[i] = mean_y[0];
+          }else{
+            NumericVector mean_y = rtruncnorm(1, bart_pre[i] + main_pi_pre[i] + Z_cbart[i], 1, 0, R_PosInf);
+            Y[i] = mean_y[0];
+          }
         }
       }
     }
@@ -287,12 +317,22 @@ public:
     NumericVector outcome_0_hidden(N);
     NumericVector outcome_1_hidden(N);
     if(this->binary){
-      for(int i = 0; i < N; ++i){
-        outcome_1_hidden[i] = outcome_1[i];
-        outcome_0_hidden[i] = outcome_0[i];
-        
-        outcome_1[i] = R::rbinom(1, R::pnorm(outcome_1_hidden[i], 0, 1, true, false));
-        outcome_0[i] = R::rbinom(1, R::pnorm(outcome_0_hidden[i], 0, 1, true, false));
+      if(this->logistic){
+        for(int i = 0; i < N; ++i){
+          outcome_1_hidden[i] = outcome_1[i];
+          outcome_0_hidden[i] = outcome_0[i];
+          
+          outcome_1[i] = R::rbinom(1, R::plogis(outcome_1_hidden[i], 0, 1, true, false));
+          outcome_0[i] = R::rbinom(1, R::plogis(outcome_0_hidden[i], 0, 1, true, false));
+        }
+      }else{
+        for(int i = 0; i < N; ++i){
+          outcome_1_hidden[i] = outcome_1[i];
+          outcome_0_hidden[i] = outcome_0[i];
+          
+          outcome_1[i] = R::rbinom(1, R::pnorm(outcome_1_hidden[i], 0, 1, true, false));
+          outcome_0[i] = R::rbinom(1, R::pnorm(outcome_0_hidden[i], 0, 1, true, false));
+        }
       }
     }else{
       for(int i = 0; i < N; ++i){

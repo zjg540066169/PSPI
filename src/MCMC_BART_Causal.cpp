@@ -149,12 +149,8 @@ bartModelMatrix=function(X, numcut=0L, usequants=FALSE, type=7,
 */
 
 // [[Rcpp::export]]
-List MCMC_BART_Causal(NumericMatrix X, NumericVector Y, NumericVector Z, NumericVector pi, NumericMatrix X_test, NumericVector pi_test, int model, long nburn, long npost, bool binary = false, bool verbose = false, bool reverse = false, int ntrees_s = 200){
+List MCMC_BART_Causal(NumericMatrix X, NumericVector Y, NumericVector Z, NumericVector pi, NumericMatrix X_test, NumericVector pi_test, int model, long nburn, long npost, bool binary = false, bool logistic = false, bool verbose = false, bool reverse = false, int ntrees_s = 200){
   BARTforCausal * cmodel;
-  if(binary){
-    Y = Y * 2 - 1;
-  }
-  
   
   NumericMatrix X_ = clone(X);
   NumericVector Y_ = clone(Y);
@@ -176,35 +172,48 @@ List MCMC_BART_Causal(NumericMatrix X, NumericVector Y, NumericVector Z, Numeric
   //pi_test_ = log(pi_test_ / (1 - pi_test_)); //1 / (1 + exp(-1 * pi_test_));
   switch (model){
   case 1:
-    cmodel = new vanillaBART(X_, Y_, Z_, pi_, X_test_, binary, ntrees_s);
+    //cmodel = new vanillaBART(X_, Y_, Z_, pi_, X_test_, binary, logistic, ntrees_s);
     break;
   case 2:
-    cmodel = new causalBART(X_, Y_, Z_, pi_, X_test_, binary, ntrees_s);
+    cmodel = new causalBART(X_, Y_, Z_, pi_, X_test_, binary, logistic, ntrees_s);
     break;
   case 3:
-    cmodel = new model_1(X_, Y_, Z_, pi_, X_test_, binary, ntrees_s);
+    cmodel = new model_1(X_, Y_, Z_, pi_, X_test_, binary, logistic, ntrees_s);
     break;
   case 4:
-    cmodel = new model_2_4(X_, Y_, Z_, pi_, X_test_, binary, ntrees_s);
+    cmodel = new model_2_4(X_, Y_, Z_, pi_, X_test_, binary, logistic, ntrees_s);
     break;
   case 5:
-    cmodel = new model_2_4_spline(X_, Y_, Z_, pi_, X_test_, binary, ntrees_s);
+    cmodel = new model_2_4_spline(X_, Y_, Z_, pi_, X_test_, binary, logistic, ntrees_s);
     break;
   case 6:
-    cmodel = new model_2_5_spline(X_, Y_, Z_, pi_, X_test_, binary, ntrees_s);
+    cmodel = new model_2_5_spline(X_, Y_, Z_, pi_, X_test_, binary, logistic, ntrees_s);
     break;
   }
   
   long n = X_test_.nrow();
   NumericMatrix post_outcome1(npost, n);
   NumericMatrix post_outcome0(npost, n);
+  
+  NumericMatrix post_outcome1_hidden(npost, n);
+  NumericMatrix post_outcome0_hidden(npost, n);
+  
   NumericMatrix predict_s(npost, n);
+  NumericMatrix predict_h(npost, n);
   NumericMatrix cbart_pop(npost, n);
   NumericMatrix post_te(npost, n);
   NumericVector post_sigma(npost);
   NumericVector post_cbart_train(npost);
   NumericMatrix post_Z_cbart(npost, n);
   NumericMatrix post_Y_star(npost, Y.length());
+  NumericMatrix post_beta(npost, 2);
+  
+  NumericMatrix post_beta_main(npost, std::round(pow(Z.length(), 1.0/3.0)) + 2);
+  
+  NumericVector post_RR(npost);
+  NumericVector post_OR(npost);
+  
+  NumericVector post_gamma(npost);
   
   Progress p(nburn + npost, !verbose);
   for(int i = 0 ; i < nburn + npost; ++i){
@@ -223,21 +232,43 @@ List MCMC_BART_Causal(NumericMatrix X, NumericVector Y, NumericVector Z, Numeric
        }else{
          post_outcome0(i - nburn, _) = as<NumericVector>(predict_outcome["outcome_0"]);
          post_outcome1(i - nburn, _) = as<NumericVector>(predict_outcome["outcome_1"]);
+         
+         post_outcome1_hidden(i - nburn, _) = as<NumericVector>(predict_outcome["outcome_1_hidden"]);
+         post_outcome0_hidden(i - nburn, _) = as<NumericVector>(predict_outcome["outcome_0_hidden"]);
+         
        }
        post_te(i - nburn, _) = post_outcome1(i - nburn, _) - post_outcome0(i - nburn, _);
+       
+       if(binary){
+         post_RR[i - nburn] = mean(post_outcome1(i - nburn, _)) / mean(post_outcome0(i - nburn, _));
+         post_OR[i - nburn] = mean(post_outcome1(i - nburn, _)) / (1 - mean(post_outcome1(i - nburn, _))) / (mean(post_outcome0(i - nburn, _)) / (1 - mean(post_outcome0(i - nburn, _))));
+       }
+       
+       
        post_sigma[i - nburn] = posterior["sigma"];
        post_Y_star(i - nburn, _) = as<NumericVector>(posterior["Y_hat"]);
-       if(model == 4 || model == 5){
+       if(model == 4 || model == 5 || model == 6){
          post_cbart_train[i - nburn] = posterior["cbart_train"];
        }
-       if(model == 4 || model == 5){
-         predict_s(i - nburn, _) =  as<NumericVector>(predict_outcome["predict_s"]);
-         cbart_pop(i - nburn, _) =  as<NumericVector>(predict_outcome["cbart_pop"]);
+       if(model == 5 || model == 6){
+         predict_s(i - nburn, _) = as<NumericVector>(predict_outcome["predict_s"]);
+         cbart_pop(i - nburn, _) = as<NumericVector>(predict_outcome["cbart_pop"]);
+         post_beta(i - nburn, 0) = as<NumericVector>(posterior["ns_beta"])[0];
+         post_beta(i - nburn, 1) = as<NumericVector>(posterior["ns_beta"])[1];
+         post_gamma(i - nburn) = as<double>(posterior["gamma"]);
+       }
+       if(model == 6){
+         predict_h(i - nburn, _) =  as<NumericVector>(predict_outcome["predict_h"]);
+         post_beta_main(i - nburn, _) = as<NumericVector>(posterior["ns_beta_main"]);
        }
        //post_cbart_pre_mean[i - nburn] = posterior["cbart_pre_mean"];
        //post_Z_cbart(i - nburn, _) = as<NumericVector>(posterior["post_Z_cbart"]);
     }
   }
-  return List::create(Named("post_Z_cbart") = post_Z_cbart,Named("post_cbart_train") = post_cbart_train, Named("post_outcome1") = post_outcome1, Named("post_outcome0") = post_outcome0, Named("post_te") = post_te, Named("post_sigma") = post_sigma, Named("post_Y_star") = post_Y_star, Named("predict_s") = predict_s, Named("cbart_pop") = cbart_pop);
+  if(binary){
+    post_OR = post_OR[is_finite(post_OR)];
+    return List::create(Named("post_beta") = post_beta, Named("post_gamma") = post_gamma,Named("post_outcome1") = post_outcome1, Named("post_outcome0") = post_outcome0, Named("post_te") = post_te, Named("post_RR") = post_RR, Named("post_OR") = post_OR, Named("post_outcome1_hidden") = post_outcome1_hidden, Named("post_outcome0_hidden") = post_outcome0_hidden, Named("predict_s") = predict_s);
+  }else
+    return List::create(Named("post_beta_main") = post_beta_main, Named("post_beta") = post_beta, Named("post_Z_cbart") = post_Z_cbart,Named("post_cbart_train") = post_cbart_train, Named("post_outcome1") = post_outcome1, Named("post_outcome0") = post_outcome0, Named("post_te") = post_te, Named("post_sigma") = post_sigma, Named("post_Y_star") = post_Y_star, Named("predict_s") = predict_s, Named("predict_h") = predict_h, Named("cbart_pop") = cbart_pop);
   //return List::create(Named("post_outcome1") = post_outcome1, Named("post_outcome0") = post_outcome0, Named("post_te") = post_te);
 }

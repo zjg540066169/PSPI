@@ -148,32 +148,31 @@ bartModelMatrix=function(X, numcut=0L, usequants=FALSE, type=7,
 
 class BARTforCausal{
 public:
-  BARTforCausal(NumericMatrix X_, NumericVector Y_, NumericVector Z_, NumericVector pi_, NumericMatrix X_test_, bool binary, long ntrees_s = 200){
+  BARTforCausal(NumericMatrix X_, NumericVector Y_, NumericVector Z_, NumericVector pi_, NumericMatrix X_test_, bool binary, bool logistic, long ntrees_s = 200){
     X = clone(X_);
-    Y = Y_;
+    if(binary){
+      Y = as<NumericVector>(clone(Y_)) * 2 - 1;
+    }else{
+      Y = Y_;
+    }
     Z = clone(Z_);
+    this->Y_ = clone(Y_);
+    //Rcout << this->Y_ << std::endl;
+    //Rcout << Y << std::endl;
     pi = clone(pi_);
     main_bart = NULL;
     this->binary = binary;
     n = Y.length();
     this->ntrees_s = ntrees_s;
     this->X_test = X_test_;
-    //Rcout << "father initial";
+    this->w = NumericVector(Y_.length()) + 1.0;
+    this->logistic = logistic;
+    lambda = new double [n]; //latent lambda's
+    for(unsigned int i=0; i<n; i++) {
+      lambda[i] = 1.0;
+    }
+    
   }
-  
-  BARTforCausal(NumericMatrix X_, LogicalVector Y_, NumericVector Z_, NumericVector pi_, NumericMatrix X_test_, bool binary, long ntrees_s = 200){
-    X = clone(X_);
-    Y = as<NumericVector>(clone(Y_)) * 2 - 1;
-    Z = clone(Z_);
-    pi = clone(pi_);
-    main_bart = NULL;
-    this->binary = binary;
-    n = Y.length();
-    this->ntrees_s = ntrees_s;
-    this->X_test = X_test_;
-    //Rcout << "father initial";
-  }
-  
   
   virtual void update(bool verbose = false) = 0;
   virtual List predict(NumericVector pi_test) = 0;
@@ -262,10 +261,15 @@ protected:
   NumericMatrix X;
   NumericMatrix X_test;
   NumericVector Y;
+  LogicalVector Y_;
   NumericVector Z;
   NumericVector pi;
+  NumericVector w;
   bart_model * main_bart;
   bool binary;
+  bool logistic;
   long n;
   long ntrees_s;
+  double *lambda; //latent lambda's
+  arn gen;
 };

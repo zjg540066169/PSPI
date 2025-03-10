@@ -54,6 +54,7 @@ public:
   
   virtual void update() = 0;
   virtual void update(double sigma)= 0;
+  virtual void update(NumericVector sigma)= 0;
   
   void set_Y(NumericVector y){
     this->y = as<arma::vec>(y);
@@ -124,6 +125,46 @@ public:
     return arma::vectorise(rmvnorm(1, beta_mean, beta_var));
   }
   
+  arma::vec update_beta(arma::mat mat_X, arma::vec mat_Y, arma::vec sigma) {
+    this->Sigma = arma::diagmat(sigma % sigma);
+    //Rcout<<this->Sigma<<std::endl;
+    // Form the diagonal weight matrix.
+    inv_Sigma = arma::inv_sympd(Sigma);
+    
+    // Compute the weighted cross-product matrix.
+    arma::mat XtWX = mat_X.t() * inv_Sigma * mat_X;
+    
+    // The posterior variance for beta.
+    arma::mat beta_var = arma::inv_sympd(XtWX);
+    
+    // The posterior mean for beta (weighted least squares estimate).
+    arma::vec beta_mean = beta_var * (mat_X.t() * inv_Sigma * mat_Y);
+    
+    // Sample from the multivariate normal with mean beta_mean and covariance beta_var.
+    return arma::vectorise(rmvnorm(1, beta_mean, beta_var));
+  }
+  
+  // arma::vec update_beta(arma::mat mat_X, arma::vec mat_Y, arma::mat Sigma) {
+  //   this->Sigma = Sigma;
+  //   
+  //   // Form the diagonal weight matrix.
+  //   arma::mat W = arma::inv_sympd(this->Sigma);
+  //   
+  //   // Compute the weighted cross-product matrix.
+  //   arma::mat XtWX = mat_X.t() * W * mat_X;
+  //   
+  //   // The posterior variance for beta.
+  //   arma::mat beta_var = arma::inv(XtWX);
+  //   
+  //   // The posterior mean for beta (weighted least squares estimate).
+  //   arma::vec beta_mean = beta_var * (mat_X.t() * W * mat_Y);
+  //   
+  //   // Sample from the multivariate normal with mean beta_mean and covariance beta_var.
+  //   return arma::vectorise(rmvnorm(1, beta_mean, beta_var));
+  // }
+  
+  
+  
   void update_outcome(){
     lr_outcome = lr_basis * lr_coefficient;
     ns_outcome = lr_outcome;
@@ -139,6 +180,13 @@ public:
     return 1 / s;
   }
   
+  double qinvgamma(double p, double a, double b) {
+    // R::qgamma returns the quantile for the Gamma distribution with given shape and scale.
+    double q = R::qgamma(1.0 - p, a, 1.0 / b, true, false);
+    return 1.0 / q;
+  }
+  
+  
 protected:
   NS_basis * basis;
   
@@ -147,6 +195,8 @@ protected:
   double sigma;
   double gamma;
   
+  arma::mat Sigma;
+  arma::mat inv_Sigma;
   
   arma::vec lr_coefficient;
   arma::vec ns_coefficient;
