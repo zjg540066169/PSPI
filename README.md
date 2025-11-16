@@ -7,9 +7,7 @@
   ![C++](https://img.shields.io/badge/language-C%2B%2B-green)
   <!-- badges: end -->
 
-The R package **PSPI** (Propensity Score Predictive Inference) provides Bayesian methods for generalizing treatment effects from clinical trials to target populations. It implements five models-\code{BCF}, \code{BCF_P}, \code{FullBART}, \code{SplineBART}, and \code{DSplineBART}-built on Bayesian
-Additive Regression Trees (BART). Spline-based variants (\code{SplineBART} and \code{DSplineBART}) use propensity score transformations and spline terms to handle covariate shift between datasets.
-Core computations rely on efficient MCMC routines implemented in C++.
+The R package **PSPI** (Propensity Score Predictive Inference) provides a suite of Propensity Score Predictive Inference (PSPI) methods to generalize treatment effects in trials to target populations. The package includes an existing model Bayesian Causal Forest (BCF) and four PSPI models (BCF-PS, FullBART, SplineBART, DSplineBART). These methods leverage Bayesian Additive Regression Trees (BART) to adjust for high-dimensional covariates and nonlinear associations, while SplineBART and DSplineBART further use propensity score based splines to address covariate shift between trial data and target population. 
 
 ## Installation
 This package is based on `Rcpp`, `RcppArmadillo`, `RcppDist`, and `pg`, please make sure these three packages can be installed.
