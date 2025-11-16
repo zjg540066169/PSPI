@@ -176,7 +176,26 @@ public:
          {t[i].birth(nid,v,c,ml,mr);}
    void death(size_t i,size_t nid, double mu)
          {t[i].death(nid,mu);}
-   void pr();
+   //public functions
+   void pr() //print to screen
+   {
+     cout << "*****bart object:\n";
+     cout << "m: " << m << std::endl;
+     cout << "t[0]:\n " << t[0] << std::endl;
+     cout << "t[m-1]:\n " << t[m-1] << std::endl;
+     cout << "prior and mcmc info:\n";
+     pi.pr();
+     if(dart){
+       cout << "*****dart prior (On):\n";
+       cout << "a: " << a << std::endl;
+       cout << "b: " << b << std::endl;
+       cout << "rho: " << rho << std::endl;
+       cout << "augmentation: " << aug << std::endl;
+     }
+     else cout << "*****dart prior (Off):\n";
+     if(p) cout << "data set: n,p: " << n << ", " << p << std::endl;
+     else cout << "data not set\n";
+   }
    void tonull() {for(size_t i=0;i!=t.size();i++) t[i].tonull();}
    
    void fit2(tree& t, xinfo& xi, size_t p, size_t n, double *x,  double* fv)

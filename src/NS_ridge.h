@@ -93,7 +93,9 @@ public:
     //Rcout << "begin" << std::endl;
     this->sigma = sigma;
     if(K > 2){
+      //Rcout << 456 ;
       lr_coefficient = update_beta(lr_basis, this->y - ns_part_outcome, this->sigma);
+      //Rcout << 456 ;
     }else{
       lr_coefficient = update_beta(lr_basis, this->y, this->sigma);
     }
@@ -106,9 +108,11 @@ public:
         arma::vec theta_mean = arma::inv_sympd(pow(sigma, 2) * arma::inv_sympd(Lambda) + ns_basis.t() * ns_basis) * ns_basis.t() * (this->y - lr_outcome);
         ns_coefficient = arma::vectorise(rmvnorm(1, theta_mean, theta_var));
       }else{
+        
         arma::mat theta_var = arma::inv_sympd(1 / pow(gamma, 2) * arma::eye<arma::mat>(K - 2, K - 2) + 1 / pow(this->sigma, 2) * ns_basis.t() * ns_basis);
         arma::vec theta_mean = arma::inv_sympd(pow(this->sigma, 2) / pow(gamma, 2) * arma::eye<arma::mat>(K - 2, K - 2) + ns_basis.t() * ns_basis) * ns_basis.t() * (this->y - lr_outcome);
         ns_coefficient = arma::vectorise(rmvnorm(1, theta_mean, theta_var));
+        
       }
       
       ns_part_outcome = ns_basis * ns_coefficient;

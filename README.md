@@ -1,1 +1,31 @@
 # PSPI
+Package: PSPI
+Type: Package
+Title: Propensity Score Predictive Inference to Generalize Trial Findings to
+       Target Population
+Version: 1.0
+Date: 2025-11-15
+Author: Jungang Zou [aut, cre],
+  Qixuan Chen [aut],
+  Joseph Schwartz [aut],
+  Nathalie Moise [aut],
+  Roderick Little [aut],
+  Robert McCulloch [ctb],
+  Rodney Sparapani [ctb],
+  Charles Spanbauer [ctb]
+Authors@R: c(person("Jungang", "Zou", role = c("aut", "cre"), email = "jungang.zou@gmail.com"), person("Qixuan", "Chen", role = "aut"), person("Joseph", "Schwartz", role = "aut"), person("Nathalie", "Moise", role = "aut"), person("Roderick", "Little", role = "aut"), person("Robert", "McCulloch", role = "ctb"), person("Rodney", "Sparapani", role = "ctb"), person("Charles", "Spanbauer", role = "ctb"))
+Maintainer: Jungang Zou <jungang.zou@gmail.com>
+Description: Provides a suite of Propensity Score Predictive Inference (PSPI) methods to generalize treatment effects in trials to target populations. The package includes an existing model Bayesian Causal Forest (BCF) and four PSPI models (BCF-PS, FullBART, SplineBART, DSplineBART). These methods leverage Bayesian Additive Regression Trees (BART) to adjust for high-dimensional covariates and nonlinear associations, while SplineBART and DSplineBART further use propensity score based splines to address covariate shift between trial data and target population. 
+License: GPL-2
+Encoding: UTF-8
+Depends: R (>= 4.1.0)
+Imports: Rcpp, Matrix, arm, dplyr, mvtnorm, tidyr, 
+LinkingTo: Rcpp, RcppArmadillo, RcppDist, RcppProgress
+RoxygenNote: 7.3.2
+SystemRequirements: GNU make
+Suggests: knitr, rmarkdown, mitml
+VignetteBuilder: knitr
+NeedsCompilation: yes
+Packaged: 2024-12-10 23:44:22 UTC; jz3138
+Repository: CRAN
+Date/Publication: 2024-12-11 07:50:10 UTC
