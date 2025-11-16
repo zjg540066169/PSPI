@@ -24,5 +24,4 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
 SystemRequirements: GNU make
 Suggests: knitr, rmarkdown, mitml
-VignetteBuilder: knitr
 NeedsCompilation: yes
