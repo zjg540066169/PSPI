@@ -1,0 +1,72 @@
+name: R Package Build and Deploy to GitHub Packages
+
+on:
+  push:
+    branches:
+      - main  # Trigger on push to the main branch
+
+jobs:
+  build:
+    runs-on: ubuntu-latest  # Use the latest Ubuntu image for CI
+
+    steps:
+    # Step 1: Checkout code from the repository
+    - name: Checkout code
+      uses: actions/checkout@v3  # Use the latest version of checkout action
+
+    # Step 2: Set up R
+    - name: Set up R
+      uses: r-lib/actions/setup-r@v2
+      with:
+        r-version: '4.4.0'  # Specify the R version you need
+
+    # Step 3: Install system libraries required for the package
+    - name: Install system libraries
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libharfbuzz-dev libfribidi-dev libfreetype6-dev
+        sudo apt-get install -y libcurl4-openssl-dev libxml2-dev libssl-dev
+        sudo apt-get install -y libblas-dev liblapack-dev gfortran
+
+    # Step 4: Install Pandoc
+    - name: Install Pandoc
+      uses: r-lib/actions/setup-pandoc@v2
+
+    # Step 5: Install Matrix package (if required)
+    - name: Install Matrix package
+      run: |
+        Rscript -e "install.packages('Matrix', repos = 'https://cloud.r-project.org')"
+
+    # Step 6: Install R dependencies individually
+    - name: Install R dependencies
+      run: |
+        Rscript -e "install.packages(c('usethis', 'pkgdown', 'rcmdcheck', 'rversions', 'urlchecker'), repos = 'https://cloud.r-project.org')"
+
+    # Step 7: Install devtools
+    - name: Install devtools
+      run: |
+        Rscript -e "install.packages('devtools', repos = 'https://cloud.r-project.org')"
+
+    # Step 8: Install package dependencies from DESCRIPTION
+    - name: Install package dependencies
+      run: |
+        Rscript -e "devtools::install_deps(upgrade = 'always')"
+
+    # Step 8: Build R package
+    - name: Build R package
+      run: |
+        mkdir -p dist  # Ensure the dist directory exists
+        Rscript -e "devtools::build(path = 'dist')"
+        ls -l dist  # Debugging step to confirm the package was built
+
+    # Step 9: Upload built package as artifact
+    - name: Upload built package as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: PSPI_package
+        path: "dist/*.tar.gz"  # Adjust path to the expected location
+
+    # Step 7: Run R CMD check
+    - name: Run R CMD check
+      run: |
+        R CMD check --no-manual --as-cran dist/*.tar.gz
