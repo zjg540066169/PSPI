@@ -15,35 +15,20 @@
 #' can be the true values or estimated from some models. The function then
 #' performs Monte Carlo  Markov chain (MCMC) for the posterior inference.
 #'
-#' @details
-#' The function is a high-level wrapper around the compiled C++ routine
-#' \code{MCMC_PSPI_generalizability()}, which carries out the main computations.
-#' 
-#' Several model options are available, offering flexibility in how the treatment
-#' effect is modeled:
-#' 
-#' * **"BCF"** – Bayesian Causal Forests (Hahn et al. (2020))  
-#' * **"BCF_P"** – BCF with propensity-score as an additional predictor
-#' * **"FullBART"** – Use three BARTs to estimate treatment effects
-#' * **"SplineBART"** – Incorporates natural cubic spline for heterogeneous treatment effect
-#' * **"DSplineBART"** – Uses another natural cubic spline for prognostic score
-#'
-#' Since splines are sensitive to scales of predictor, robust transformation is needed.
-#' The propensity scores (\code{pi} for trial, \code{pi_pop} for population) can be
-#' optionally transformed before modeling using one of the following:
-#' \code{"Identity"}, \code{"Logit"}, \code{"Cloglog"}, or \code{"InvGumbel"} (default).
-#'
 #'
 #' @details
 #' **Model choices**
 #' 
 #' The `model` argument selects the type of PSPI model to be fitted:
 #' 
-#' * `"BCF"` – Bayesian Causal Forests (Hahn et al. (2020)).  
-#' * `"BCF_P"` – BCF with propensity-score as an additional predictor.  
-#' * `"FullBART"` – Use three BARTs to estimate treatment effects.  
-#' * `"SplineBART"` – Incorporates natural cubic spline for heterogeneous treatment effect.  
-#' * `"DSplineBART"` – Uses another natural cubic spline for prognostic score.
+#' \itemize{
+#'   \item \code{"BCF"} – Bayesian Causal Forests (Hahn et al., 2020).
+#'   \item \code{"BCF_P"} – BCF with the propensity score as an additional predictor.
+#'   \item \code{"FullBART"} – Uses three BARTs to estimate treatment effects.
+#'   \item \code{"SplineBART"} – Incorporates a natural cubic spline for heterogeneous treatment effects.
+#'   \item \code{"DSplineBART"} – Adds another natural cubic spline for the prognostic score.
+#' }
+
 #'
 #' **Propensity score transformations**
 #'
@@ -51,11 +36,12 @@
 #' The propensity scores (\code{pi} for trial, \code{pi_pop} for population) can be
 #' optionally transformed before modeling using one of the following:
 #' 
-#' * `"Identity"` – uses the raw propensity scores directly (no transformation).  
-#' * `"Logit"` – applies the logit transform: \eqn{g(p) = \log(p / (1 - p))}.  
-#' * `"Cloglog"` – complementary log–log transform: \eqn{g(p) = \log(-\log(1 - p))}.  
-#' * `"InvGumbel"` – inverse Gumbel transform: \eqn{g(p) = -\log(-\log(p))}.  
-#'   This is the **default** and has shown good empirical performance in PSPI models.
+#' \itemize{
+#'   \item \code{"Identity"} – uses the raw propensity scores directly (no transformation).
+#'   \item \code{"Logit"} – applies the logit transform: \eqn{g(p) = \log(p / (1 - p))}.
+#'   \item \code{"Cloglog"} – complementary log–log transform: \eqn{g(p) = \log(-\log(1 - p))}.
+#'   \item \code{"InvGumbel"} – inverse Gumbel transform: \eqn{g(p) = -\log(-\log(p))}. Default choice.
+#' }
 #'
 #' Users can experiment with different transformations to assess model sensitivity.
 #'
@@ -66,10 +52,10 @@
 #' customized through the following parameters:
 #' \itemize{
 #'   \item \code{n_knots_inter}, \code{order_inter}: number and order of spline knots for
-#'         treatment-interaction effects. Available for both \strong{SplineBART} and
-#'         \strong{DSplineBART}.
+#'         treatment-interaction effects. Available for both \code{SplineBART} and
+#'         \code{DSplineBART}.
 #'   \item \code{n_knots_main}, \code{order_main}: number and order of spline knots for
-#'         main effects. Available only for \strong{DSplineBART}.
+#'         main effects. Available only for \code{DSplineBART}.
 #' }
 #' 
 #' If any of these are left as \code{NULL}, default values are chosen automatically based
@@ -91,11 +77,11 @@
 #' @param npost Number of posterior iterations saved after burn-in (default = 4000).
 #' @param n_knots_main,n_knots_inter Number of spline knots for main and interaction effects.
 #'   If \code{NULL}, defaults are chosen automatically. 
-#'   \code{n_knots_inter} is available for \strong{SplineBART} and \strong{DSplineBART};
-#'   \code{n_knots_main} is available only for \strong{DSplineBART}.
+#'   \code{n_knots_inter} is available for \code{SplineBART} and \code{DSplineBART};
+#'   \code{n_knots_main} is available only for \code{DSplineBART}.
 #' @param order_main,order_inter Order of spline basis functions (default = 3).
-#'   \code{order_inter} applies to both \strong{SplineBART} and \strong{DSplineBART};
-#'   \code{order_main} applies only to \strong{DSplineBART}.
+#'   \code{order_inter} applies to both \code{SplineBART} and \code{DSplineBART};
+#'   \code{order_main} applies only to \code{DSplineBART}.
 #' @param ntrees_s Number of trees used for the BART component (default = 200).
 #' @param verbose Logical; if TRUE, prints progress messages.
 #' @param seed Optional random seed for reproducibility.
@@ -103,16 +89,17 @@
 #' @return
 #' A list containing posterior samples and model summaries produced by the C++
 #' sampler. Typical elements include:
-#' * \code{post_outcome1} – posterior draws for individual potential outcome under treatment
-#' * \code{post_outcome0} – posterior draws for individual potential outcome under control
-#' * \code{post_te} – posterior draws for individual treatment effects
+#' \describe{
+#' \item{post_outcome1}{Each row is a posterior draw for individual potential outcome under treatment}
+#' \item{post_outcome0}{Each row is a posterior draw for individual potential outcome under control}
+#' \item{post_te}{Each row is a posterior draw for individual treatment effects}
+#' }
 #'
 #' @examples
-#' \dontrun{
 #' # Example with simulated data
 #' sim <- sim_data(scenario = "linear", n_trial = 60)
 #' 
-#' fit <- MCMC_PSPI_generalizability_R(
+#' fit <- PSPI_generalizability(
 #'   X = as.matrix(sim$trials[, paste0("X", 1:10)]),
 #'   Y = sim$trials$Y,
 #'   A = sim$trials$A,
@@ -126,7 +113,6 @@
 #' )
 #' 
 #' str(fit)
-#' }
 #'
 #'
 #' @note
@@ -143,7 +129,7 @@
 #' @importFrom stats rnorm runif
 #' @importFrom methods is
 #' @export
-MCMC_PSPI_generalizability_R = function(X, Y, A, pi, X_pop, pi_pop, model, transformation = "InvGumbel", nburn = 4000, npost = 4000, n_knots_main = NULL, n_knots_inter = NULL, order_main = 3, order_inter = 3, ntrees_s = 200, verbose = F, seed = NULL){
+PSPI_generalizability = function(X, Y, A, pi, X_pop, pi_pop, model, transformation = "InvGumbel", nburn = 4000, npost = 4000, n_knots_main = NULL, n_knots_inter = NULL, order_main = 3, order_inter = 3, ntrees_s = 200, verbose = F, seed = NULL){
   
   if(!methods::is(model, "character")){
     stop("Invalid model_name. Please specify a character name for model. Available options: BCF, BCF_P, FullBART, SplineBART, DSplineBART.")

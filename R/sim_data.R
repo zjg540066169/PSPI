@@ -19,10 +19,10 @@
 #'   the trial.
 #'
 #' @return A \code{list} with two data frames:
-#' \itemize{
-#'   \item \code{population}: columns \code{X1:X10}, potential outcomes \code{Y1} and \code{Y0},
-#'         \code{selected} (logical), and \code{ps} (true propensity scores of trial participation).
-#'   \item \code{trials}: columns \code{X1:X10}, \code{A}, and observed \code{Y}.
+#' \describe{
+#'   \item{population}{columns \code{X1:X10}, potential outcomes \code{Y1} and \code{Y0},
+#'         \code{selected} (logical), and \code{ps} (true propensity scores of trial participation).}
+#'   \item{trials}{columns \code{X1:X10}, \code{A}, and observed \code{Y}.}
 #' }
 #'
 #' @examples

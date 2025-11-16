@@ -20,6 +20,7 @@ Encoding: UTF-8
 Depends: R (>= 4.1.0)
 Imports: Rcpp, arm, dplyr, mvtnorm, stringr, stats, nnet, methods
 LinkingTo: Rcpp, RcppArmadillo, RcppDist, RcppProgress, pg
+Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
 SystemRequirements: GNU make
 Suggests: knitr, rmarkdown, mitml

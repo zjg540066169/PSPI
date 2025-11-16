@@ -1,31 +1,42 @@
 # PSPI
-Package: PSPI
-Type: Package
-Title: Propensity Score Predictive Inference to Generalize Trial Findings to
-       Target Population
-Version: 1.0
-Date: 2025-11-15
-Author: Jungang Zou [aut, cre],
-  Qixuan Chen [aut],
-  Joseph Schwartz [aut],
-  Nathalie Moise [aut],
-  Roderick Little [aut],
-  Robert McCulloch [ctb],
-  Rodney Sparapani [ctb],
-  Charles Spanbauer [ctb]
-Authors@R: c(person("Jungang", "Zou", role = c("aut", "cre"), email = "jungang.zou@gmail.com"), person("Qixuan", "Chen", role = "aut"), person("Joseph", "Schwartz", role = "aut"), person("Nathalie", "Moise", role = "aut"), person("Roderick", "Little", role = "aut"), person("Robert", "McCulloch", role = "ctb"), person("Rodney", "Sparapani", role = "ctb"), person("Charles", "Spanbauer", role = "ctb"))
-Maintainer: Jungang Zou <jungang.zou@gmail.com>
-Description: Provides a suite of Propensity Score Predictive Inference (PSPI) methods to generalize treatment effects in trials to target populations. The package includes an existing model Bayesian Causal Forest (BCF) and four PSPI models (BCF-PS, FullBART, SplineBART, DSplineBART). These methods leverage Bayesian Additive Regression Trees (BART) to adjust for high-dimensional covariates and nonlinear associations, while SplineBART and DSplineBART further use propensity score based splines to address covariate shift between trial data and target population. 
-License: GPL-2
-Encoding: UTF-8
-Depends: R (>= 4.1.0)
-Imports: Rcpp, Matrix, arm, dplyr, mvtnorm, tidyr, 
-LinkingTo: Rcpp, RcppArmadillo, RcppDist, RcppProgress
-RoxygenNote: 7.3.2
-SystemRequirements: GNU make
-Suggests: knitr, rmarkdown, mitml
-VignetteBuilder: knitr
-NeedsCompilation: yes
-Packaged: 2024-12-10 23:44:22 UTC; jz3138
-Repository: CRAN
-Date/Publication: 2024-12-11 07:50:10 UTC
+  <!-- badges: start -->
+  [![R-CMD-check](https://github.com/zjg540066169/SBMtrees/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/zjg540066169/PSPI/actions/workflows/R-CMD-check.yaml)
+  [![License: GPL-2](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://www.gnu.org/licenses/old-licenses/gpl-2.0.html)
+  [![version](https://img.shields.io/badge/version-1.1-green.svg)](https://github.com/zjg540066169/PSPI)
+  ![R](https://img.shields.io/badge/language-R-blue)
+  ![C++](https://img.shields.io/badge/language-C%2B%2B-green)
+  <!-- badges: end -->
+
+The R package **PSPI** (Propensity Score Predictive Inference) provides Bayesian methods for generalizing treatment effects from clinical trials to target populations. It implements five models-\code{BCF}, \code{BCF_P}, \code{FullBART}, \code{SplineBART}, and \code{DSplineBART}-built on Bayesian
+Additive Regression Trees (BART). Spline-based variants (\code{SplineBART} and \code{DSplineBART}) use propensity score transformations and spline terms to handle covariate shift between datasets.
+Core computations rely on efficient MCMC routines implemented in C++.
+
+## Installation
+This package is based on `Rcpp`, `RcppArmadillo`, `RcppDist`, and `pg`, please make sure these three packages can be installed.
+
+This package can be installed from R CRAN:
+```
+install.packages("PSPI")
+```
+or Github:
+```
+require("devtools")
+install_github("https://github.com/zjg540066169/PSPI")
+library(PSPI)
+```
+
+## Attribution
+
+This package includes code derived from the [BART3](https://github.com/rsparapa/bnptools/tree/master) package, originally developed by Rodney Sparapani. 
+
+The original source code, licensed under the [GNU General Public License version 2 (GPL-2)](https://www.gnu.org/licenses/old-licenses/gpl-2.0.html), has been modified as follows:
+- We include part of the C++ code in BART3, primarily about functions about `wbart` and `cpwart`. We also modify some files to make sure our package can be successfully compiled.
+- Modifications were made by Jungang Zou, 2024.
+
+### Licensing
+
+- The original BART3 package is licensed under the GNU General Public License version 2 (GPL-2).
+- This package, as a derived work, is also licensed under the GNU General Public License version 2 (GPL-2) to comply with the licensing terms.
+
+
+
