@@ -3,7 +3,6 @@
 .RData
 .Ruserdata
 *.csv
-/simulation_dec/*
-/R/*/*
 *.txt
 PSPI.Rproj
+.DS_Store
