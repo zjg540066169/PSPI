@@ -45,7 +45,7 @@ Maintainer: Jungang Zou <jungang.zou@gmail.com>
    pi_pop = sim$population$ps,
    model = "SplineBART",
    transformation = "InvGumbel",
-   verbose = T,
+   verbose = FALSE,
    nburn = 10, npost = 10
 )
    str(fit)
