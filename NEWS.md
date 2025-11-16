@@ -1,6 +1,6 @@
 # NEWS for PSPI
 
-## Version 1.0 (2025-11-15) - Initial Release
+## Version 1.1 (2025-11-15) - Initial Release
 
 This release introduces the **PSPI** package, which implements **Propensity Score Predictive Inference** methods for generalizing trial findings to a target population.
 

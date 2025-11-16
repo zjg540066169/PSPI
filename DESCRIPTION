@@ -2,7 +2,7 @@ Package: PSPI
 Type: Package
 Title: Propensity Score Predictive Inference to Generalize Trial Findings to
        Target Population
-Version: 1.0
+Version: 1.1
 Date: 2025-11-15
 Author: Jungang Zou [aut, cre],
   Qixuan Chen [aut],
