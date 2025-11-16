@@ -147,11 +147,13 @@ This function utilizes modified C++ code originally derived from the
 BART3 package (Bayesian Additive Regression Trees). The original package
 was developed by Rodney Sparapani and is licensed
 under GPL-2. Modifications were made by Jungang Zou, 2024.
+For more information about the original BART3 package, see:
+https://github.com/rsparapa/bnptools/tree/master/BART3
 }
 \examples{
 \dontrun{
 # Example with simulated data
-sim <- sim_data(scenario = "linear", n_trial = 200)
+sim <- sim_data(scenario = "linear", n_trial = 60)
 
 fit <- MCMC_PSPI_generalizability_R(
   X = as.matrix(sim$trials[, paste0("X", 1:10)]),
@@ -162,17 +164,12 @@ fit <- MCMC_PSPI_generalizability_R(
   pi_pop = sim$population$ps,
   model = "SplineBART",
   transformation = "InvGumbel",
-  verbose = FALSE
+  verbose = FALSE,
+  nburn = 10, npost = 10
 )
 
 str(fit)
 }
 
-}
-\references{
-For more information about the original BART3 package, see:
-https://github.com/rsparapa/bnptools/tree/master/BART3
-}
-\seealso{
-\code{\link{sim_data}} for generating simulated trial and population data.
+
 }

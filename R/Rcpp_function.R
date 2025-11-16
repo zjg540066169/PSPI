@@ -70,7 +70,7 @@ bartModelMatrix=function(X, numcut=0L, usequants=FALSE, type=7,
           nc[j] <- k-1
         }
         else if(usequants) { 
-          xs <- quantile(X[ , j], type=type,
+          xs <- stats::quantile(X[ , j], type=type,
                          probs=(0:(numcut+1))/(numcut+1))[-c(1, numcut+2)]
           names(xs) <- NULL
         }

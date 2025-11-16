@@ -110,7 +110,7 @@
 #' @examples
 #' \dontrun{
 #' # Example with simulated data
-#' sim <- sim_data(scenario = "linear", n_trial = 200)
+#' sim <- sim_data(scenario = "linear", n_trial = 60)
 #' 
 #' fit <- MCMC_PSPI_generalizability_R(
 #'   X = as.matrix(sim$trials[, paste0("X", 1:10)]),
@@ -121,32 +121,31 @@
 #'   pi_pop = sim$population$ps,
 #'   model = "SplineBART",
 #'   transformation = "InvGumbel",
-#'   verbose = FALSE
+#'   verbose = FALSE,
+#'   nburn = 10, npost = 10
 #' )
 #' 
 #' str(fit)
 #' }
 #'
-#' @seealso
-#' \code{\link{sim_data}} for generating simulated trial and population data.
 #'
 #' @note
 #' This function utilizes modified C++ code originally derived from the
 #' BART3 package (Bayesian Additive Regression Trees). The original package
 #' was developed by Rodney Sparapani and is licensed
 #' under GPL-2. Modifications were made by Jungang Zou, 2024.
-#' @references
 #' For more information about the original BART3 package, see:
 #' https://github.com/rsparapa/bnptools/tree/master/BART3
-#' @export
 #' @useDynLib PSPI, .registration = TRUE
 #' @importFrom dplyr case_when
 #' @importFrom stringr str_to_upper
 #' @importFrom Rcpp sourceCpp
 #' @importFrom stats rnorm runif
+#' @importFrom methods is
+#' @export
 MCMC_PSPI_generalizability_R = function(X, Y, A, pi, X_pop, pi_pop, model, transformation = "InvGumbel", nburn = 4000, npost = 4000, n_knots_main = NULL, n_knots_inter = NULL, order_main = 3, order_inter = 3, ntrees_s = 200, verbose = F, seed = NULL){
   
-  if(class(model) != "character"){
+  if(!methods::is(model, "character")){
     stop("Invalid model_name. Please specify a character name for model. Available options: BCF, BCF_P, FullBART, SplineBART, DSplineBART.")
   }
   
@@ -165,7 +164,7 @@ MCMC_PSPI_generalizability_R = function(X, Y, A, pi, X_pop, pi_pop, model, trans
     stop("Invalid model_name. Available options: BCF, BCF_P, FullBART, SplineBART, DSplineBART.")
   }
   
-  if(class(transformation) != "character"){
+  if(!methods::is(transformation, "character")){
     stop("Invalid transformation. Please specify a character name for transformation. Available options: Identity, Invlogit, Cloglog, InvGumbel.")
   }
   
@@ -214,10 +213,27 @@ MCMC_PSPI_generalizability_R = function(X, Y, A, pi, X_pop, pi_pop, model, trans
   
   if(!is.null(seed))
     set.seed(seed)
-  #print(n_knots_main)
-  #print(n_knots_inter)
+  # print(n_knots_main)
+  # print(n_knots_inter)
+  # print(X)
+  # print(Y)
+  # print(A)
+  # print(pi)
+  # print(X_pop)
+  # print(pi_pop)
+  # print(model)
+  # print(nburn)
+  # print(npost)
+  # print(n_knots_main)
+  # print(n_knots_inter)
+  # print(order_main)
+  # print(order_inter)
+  # print( ntrees_s)
+  # print(verbose)
   #MCMC_PSPI_generalizability(NumericMatrix X, NumericVector Y, NumericVector Z, NumericVector pi, NumericMatrix X_test, NumericVector pi_test, int model, long nburn, long npost, long n_knots_main, long n_knots_inter, long order_main = 3, long order_inter = 3, int ntrees_s = 200, bool verbose = false)
   mcmc_results = MCMC_PSPI_generalizability(X, Y, A, pi, X_pop, pi_pop, model, nburn, npost, n_knots_main, n_knots_inter, order_main, order_inter, ntrees_s, verbose)
+  print(n_knots_main)
+  print(n_knots_inter)
   #mcmc_results[["post_outcome1"]] = rowMeans(mcmc_results[["post_outcome1"]])
   #mcmc_results[["post_outcome0"]] = rowMeans(mcmc_results[["post_outcome0"]])
   #mcmc_results[["post_te"]] = rowMeans(mcmc_results[["post_te"]])

@@ -71,7 +71,7 @@ public:
   bart_model(){};
   
   bart_model(NumericMatrix x_train, NumericVector y_train, long numcut=100L, bool usequants = false, bool cont = false, bool rm_const = false, int ntrees = 300, Nullable<double> sigmaf = R_NilValue, double k = 2.0, double power = 2, double base = 0.95, double nu = 3){
-    Function bartModelMatrix = Rcpp::Environment::global_env()["bartModelMatrix"];
+    Function bartModelMatrix = Environment::namespace_env("PSPI")["bartModelMatrix"];
     
     this->usequants = usequants;
     this->cont = cont;
@@ -406,7 +406,7 @@ List bart_model::update(double sigma, long nburn, long npost, int skip, bool ver
   bool keeptreedraw;
   xinfo& xi = bm.getxinfo();
   //Rcout << "sigma:" << this->sigma<<std::endl;
-  for(size_t i=0;i< nburn + npost;i++) {
+  for(int i=0;i< nburn + npost;i++) {
     if(verbose){
       if(i % print_every == 0){
         printf("iteration %d",i);
@@ -515,7 +515,7 @@ List bart_model::update(double sigma, NumericVector w, long nburn, long npost, i
   bool keeptreedraw;
   xinfo& xi = bm.getxinfo();
   //Rcout << "sigma:" << this->sigma<<std::endl;
-  for(size_t i=0;i< nburn + npost;i++) {
+  for(int i=0;i< nburn + npost;i++) {
     if(verbose){
       if(i % print_every == 0){
         printf("iteration %d",i);

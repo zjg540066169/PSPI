@@ -74,7 +74,7 @@ List MCMC_PSPI_generalizability(NumericMatrix X, NumericVector Y, NumericVector 
   //NumericMatrix predict_s(npost, pi_test_.length());
   //NumericMatrix predict_h(npost, pi_test_.length());
   //NumericMatrix cbart_pop(npost, pi_test_.length());
-  
+  //Rcout << 123 << std::endl;
   Progress p(nburn + npost, !verbose);
   for(int i = 0 ; i < nburn + npost; ++i){
     if(Progress::check_abort())

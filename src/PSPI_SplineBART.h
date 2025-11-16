@@ -45,13 +45,13 @@ using namespace Rcpp;
 class PSPI_SplineBART: public BARTforPSPI{
 public:
     PSPI_SplineBART(NumericMatrix X_, NumericVector Y_, NumericVector Z_, NumericVector pi_, NumericMatrix X_test_, long n_knots, long order = 3, long ntrees_s = 200) : BARTforPSPI(X_, Y_, Z_, pi_, X_test_, ntrees_s){
-    //Rcout << 123 ;
+    //Rcout << 1234 ;
     
     main_bart = new bart_model(cbind(X, pi), Y, 100L, false, false, false, 200);
     main_bart->update(50, 50, 1, false, 10L);
     sigma = main_bart->get_sigma();
     bart_pre = colMeans(main_bart->predict(cbind(this->X, this->pi)));
-    
+    //Rcout << 12344 ;
     Z_1 = (Z == 1.0);
     X_Z = sliceRows(X, Z_1);
     Y_Z = Y[Z_1] - bart_pre[Z_1];
