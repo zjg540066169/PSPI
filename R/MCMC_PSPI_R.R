@@ -232,8 +232,6 @@ MCMC_PSPI_generalizability_R = function(X, Y, A, pi, X_pop, pi_pop, model, trans
   # print(verbose)
   #MCMC_PSPI_generalizability(NumericMatrix X, NumericVector Y, NumericVector Z, NumericVector pi, NumericMatrix X_test, NumericVector pi_test, int model, long nburn, long npost, long n_knots_main, long n_knots_inter, long order_main = 3, long order_inter = 3, int ntrees_s = 200, bool verbose = false)
   mcmc_results = MCMC_PSPI_generalizability(X, Y, A, pi, X_pop, pi_pop, model, nburn, npost, n_knots_main, n_knots_inter, order_main, order_inter, ntrees_s, verbose)
-  print(n_knots_main)
-  print(n_knots_inter)
   #mcmc_results[["post_outcome1"]] = rowMeans(mcmc_results[["post_outcome1"]])
   #mcmc_results[["post_outcome0"]] = rowMeans(mcmc_results[["post_outcome0"]])
   #mcmc_results[["post_te"]] = rowMeans(mcmc_results[["post_te"]])
