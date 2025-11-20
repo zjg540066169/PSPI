@@ -83,8 +83,9 @@ List MCMC_PSPI_generalizability(NumericMatrix X, NumericVector Y, NumericVector 
     if(verbose)
       Rcout << i << " " << nburn + npost << std::endl;
     cmodel->update(verbose);
-    List posterior = cmodel->get_posterior();
+    
     if(i >= nburn){
+      List posterior = cmodel->get_posterior();
       List predict_outcome = cmodel->predict(pi_test_);
       post_outcome0(i - nburn, _) = (as<NumericVector>(predict_outcome["outcome_0"]));
       post_outcome1(i - nburn, _) = (as<NumericVector>(predict_outcome["outcome_1"]));
