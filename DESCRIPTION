@@ -10,8 +10,8 @@ Author: Jungang Zou [aut, cre],
   Roderick Little [aut],
   Robert McCulloch [ctb],
   Rodney Sparapani [ctb],
-  Charles Spanbauer [ctb]
-  Robert Gramacy [ctb]
+  Charles Spanbauer [ctb],
+  Robert Gramacy [ctb],
   Jean-Sebastien Roy [ctb]
 Authors@R: c(person("Jungang", "Zou", role = c("aut", "cre"), email = "jungang.zou@gmail.com"), person("Qixuan", "Chen", role = "aut"), person("Joseph", "Schwartz", role = "aut"), person("Nathalie", "Moise", role = "aut"), person("Roderick", "Little", role = "aut"), person("Robert", "McCulloch", role = "ctb"), person("Rodney", "Sparapani", role = "ctb"), person("Charles", "Spanbauer", role = "ctb"), person("Robert", "Gramacy", role = "ctb"), person("Jean-Sebastien", "Roy", role = "ctb"))
 Maintainer: Jungang Zou <jungang.zou@gmail.com>
