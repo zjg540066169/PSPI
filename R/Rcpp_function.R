@@ -9,12 +9,12 @@ bartModelMatrix=function(X, numcut=0L, usequants=FALSE, type=7,
   }
   grp=NULL
   if(X.class=='data.frame') {
-    print(X)
+    #print(X)
     p=dim(X)[2]
     
     xnm = names(X)
     for(i in 1:p) {
-      print(i)
+      #print(i)
       if(is.factor(X[[i]])) {
         #print(i)
         Xtemp = nnet::class.ind(X[[i]])

@@ -20,15 +20,6 @@ Core computations rely on efficient MCMC routines implemented in C++.
   The modified code is redistributed in accordance with the GPL-2 license.
   For more details on the modifications, see the package's documentation.
 }
-\author{
-Jungang Zou <jungang.zou@gmail.com>
-Qixuan Chen
-Joseph Schwartz
-Nathalie Moise
-Roderick Little
-
-Maintainer: Jungang Zou <jungang.zou@gmail.com>
-}
 \references{
   BART3 package: https://github.com/rsparapa/bnptools/tree/master, originally developed by Rodney Sparapani. 
 }
