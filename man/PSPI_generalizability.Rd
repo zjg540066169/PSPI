@@ -20,7 +20,7 @@ PSPI_generalizability(
   order_main = 3,
   order_inter = 3,
   ntrees_s = 200,
-  verbose = F,
+  verbose = FALSE,
   seed = NULL
 )
 }
@@ -151,7 +151,7 @@ fit <- PSPI_generalizability(
   model = "SplineBART",
   transformation = "InvGumbel",
   verbose = FALSE,
-  nburn = 10, npost = 10
+  nburn = 1, npost = 1
 )
 
 str(fit)

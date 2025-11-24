@@ -109,7 +109,7 @@
 #'   model = "SplineBART",
 #'   transformation = "InvGumbel",
 #'   verbose = FALSE,
-#'   nburn = 10, npost = 10
+#'   nburn = 1, npost = 1
 #' )
 #' 
 #' str(fit)
@@ -129,7 +129,7 @@
 #' @importFrom stats rnorm runif
 #' @importFrom methods is
 #' @export
-PSPI_generalizability = function(X, Y, A, pi, X_pop, pi_pop, model, transformation = "InvGumbel", nburn = 4000, npost = 4000, n_knots_main = NULL, n_knots_inter = NULL, order_main = 3, order_inter = 3, ntrees_s = 200, verbose = F, seed = NULL){
+PSPI_generalizability = function(X, Y, A, pi, X_pop, pi_pop, model, transformation = "InvGumbel", nburn = 4000, npost = 4000, n_knots_main = NULL, n_knots_inter = NULL, order_main = 3, order_inter = 3, ntrees_s = 200, verbose = FALSE, seed = NULL){
   
   if(!methods::is(model, "character")){
     stop("Invalid model_name. Please specify a character name for model. Available options: BCF, BCF_P, FullBART, SplineBART, DSplineBART.")
@@ -154,7 +154,7 @@ PSPI_generalizability = function(X, Y, A, pi, X_pop, pi_pop, model, transformati
     stop("Invalid transformation. Please specify a character name for transformation. Available options: Identity, Invlogit, Cloglog, InvGumbel.")
   }
   
-  print(paste0("Start to run the model: ", c("BCF", "BCF_P", "FullBART", "SplineBART", "DSplineBART")[model - 1]))
+  message(paste0("Start to run the model: ", c("BCF", "BCF_P", "FullBART", "SplineBART", "DSplineBART")[model - 1]))
   
 
   
@@ -180,47 +180,26 @@ PSPI_generalizability = function(X, Y, A, pi, X_pop, pi_pop, model, transformati
   if(transformation == "LOGIT"){
     pi = arm::logit(pi)
     pi_pop = arm::logit(pi_pop)
-    print("Transformation on the propensity scores: Logit")
+    message("Transformation on the propensity scores: Logit")
   }
   if(transformation == "CLOGLOG"){
     pi = log(-log(1- pi))
     pi_pop = log(-log(1- pi_pop))
-    print("Transformation on the propensity scores: Cloglog")
+    message("Transformation on the propensity scores: Cloglog")
   }
   if(transformation == "INVGUMBEL"){
     pi = -log(-log(pi))
     pi_pop =-log(-log(pi_pop))
-    print("Transformation on the propensity scores: InvGumbel")
+    message("Transformation on the propensity scores: InvGumbel")
     
   }
   if(transformation == "IDENTITY"){
-    print("Transformation on the propensity scores: Identity")
+    message("Transformation on the propensity scores: Identity")
   }
   
   if(!is.null(seed))
     set.seed(seed)
-  # print(n_knots_main)
-  # print(n_knots_inter)
-  # print(X)
-  # print(Y)
-  # print(A)
-  # print(pi)
-  # print(X_pop)
-  # print(pi_pop)
-  # print(model)
-  # print(nburn)
-  # print(npost)
-  # print(n_knots_main)
-  # print(n_knots_inter)
-  # print(order_main)
-  # print(order_inter)
-  # print( ntrees_s)
-  # print(verbose)
-  #MCMC_PSPI_generalizability(NumericMatrix X, NumericVector Y, NumericVector Z, NumericVector pi, NumericMatrix X_test, NumericVector pi_test, int model, long nburn, long npost, long n_knots_main, long n_knots_inter, long order_main = 3, long order_inter = 3, int ntrees_s = 200, bool verbose = false)
   mcmc_results = MCMC_PSPI_generalizability(X, Y, A, pi, X_pop, pi_pop, model, nburn, npost, n_knots_main, n_knots_inter, order_main, order_inter, ntrees_s, verbose)
-  #mcmc_results[["post_outcome1"]] = rowMeans(mcmc_results[["post_outcome1"]])
-  #mcmc_results[["post_outcome0"]] = rowMeans(mcmc_results[["post_outcome0"]])
-  #mcmc_results[["post_te"]] = rowMeans(mcmc_results[["post_te"]])
   return(mcmc_results)
 }
 
