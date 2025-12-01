@@ -15,6 +15,7 @@ This package is based on `Rcpp`, `RcppArmadillo`, `RcppDist`, and `pg`, please m
 This package can be installed from R CRAN:
 ```
 install.packages("PSPI")
+library(PSPI)
 ```
 or Github:
 ```
@@ -27,7 +28,7 @@ library(PSPI)
 
 This package includes code derived from the [BART3](https://github.com/rsparapa/bnptools/tree/master) package, originally developed by Rodney Sparapani. 
 
-The original source code, licensed under the [GNU General Public License version 2 (GPL-2)](https://www.gnu.org/licenses/old-licenses/gpl-2.0.html), has been modified as follows:
+The original source code, licensed under the [GNU General Public License version 2 (GPL-2)](https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html), has been modified as follows:
 - We include part of the C++ code in BART3, primarily about functions about `wbart` and `cpwart`. We also modify some files to make sure our package can be successfully compiled.
 - Modifications were made by Jungang Zou, 2024.
 
